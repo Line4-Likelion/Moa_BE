@@ -42,12 +42,14 @@ jobs:
           key: ${{ secrets.GCP_SSH_KEY }}
           script: |
             mkdir -p ~/app
-            CURRENT_PID=$(pgrep -f .jar)
+          
+            CURRENT_PID=$(lsof -t -i:8080)
             if [ -n "$CURRENT_PID" ]; then
-              echo "Stopping running app (PID: $CURRENT_PID)..."
+              echo "Stopping running app on port 8080 (PID: $CURRENT_PID)..."
               kill -15 $CURRENT_PID
-              sleep 5
+              sleep 3
             fi
+
             cd ~/app
             JAR_NAME=$(ls -t *.jar | head -n 1)
             nohup java -jar $JAR_NAME > app.log 2>&1 &
