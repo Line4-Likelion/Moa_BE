@@ -22,6 +22,7 @@ public enum GlobalErrorCode implements BaseErrorCode {
 
     // 404 Not Found
     NOT_FOUND("NOT_FOUND", "요청한 리소스(캡처, 카테고리, 폴더, 작업)를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    USER_NOT_FOUND("USER_NOT_FOUND", "존재하지 않는 회원입니다.", HttpStatus.NOT_FOUND),
 
     // 409 Conflict
     EMAIL_ALREADY_EXISTS("EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.", HttpStatus.CONFLICT),
