@@ -58,4 +58,23 @@ public class AuthService {
 
         return new AuthResponse(accessToken, refreshToken, 3600, new UserResponse(user));
     }
+
+    // 토큰 재발급
+    public AuthResponse reissue(String refreshToken) {
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            throw new CustomException(GlobalErrorCode.UNAUTHORIZED);
+        }
+
+        Long userId = jwtTokenProvider.getUserId(refreshToken);
+        String email = jwtTokenProvider.getEmail(refreshToken);
+        String role = jwtTokenProvider.getRole(refreshToken);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(userId, email, role);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(userId, email, role);
+
+        return new AuthResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenValiditySeconds(), new UserResponse(user));
+    }
 }

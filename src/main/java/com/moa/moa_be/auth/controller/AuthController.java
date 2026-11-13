@@ -4,6 +4,8 @@ import com.moa.moa_be.auth.dto.AuthResponse;
 import com.moa.moa_be.auth.dto.LoginRequest;
 import com.moa.moa_be.auth.service.AuthService;
 import com.moa.moa_be.global.common.BaseResponse;
+import com.moa.moa_be.global.exception.CustomException;
+import com.moa.moa_be.global.exception.GlobalErrorCode;
 import com.moa.moa_be.user.dto.SignUpRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,5 +35,26 @@ public class AuthController {
     public BaseResponse<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
         AuthResponse response = authService.login(request);
         return BaseResponse.success(response);
+    }
+
+    @Operation(summary = "토큰 재발급", description = "Refresh Token을 이용하여 새로운 Access Token을 발급받습니다.")
+    @PostMapping("/reissue")
+    public BaseResponse<AuthResponse> reissue(@RequestHeader("Authorization") String refreshTokenHeader) {
+        String refreshToken = parseBearerToken(refreshTokenHeader);
+        AuthResponse response = authService.reissue(refreshToken);
+        return BaseResponse.success(response);
+    }
+
+    @Operation(summary = "로그아웃", description = "로그아웃을 처리합니다.")
+    @PostMapping("/logout")
+    public BaseResponse<Void> logout(@RequestHeader("Authorization") String accessTokenHeader) {
+        return BaseResponse.success(null);
+    }
+
+    private String parseBearerToken(String header) {
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7).trim();
+        }
+        throw new CustomException(GlobalErrorCode.UNAUTHORIZED);
     }
 }
