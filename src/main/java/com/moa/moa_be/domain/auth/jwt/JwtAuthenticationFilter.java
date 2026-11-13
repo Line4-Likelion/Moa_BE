@@ -1,4 +1,4 @@
-package com.moa.moa_be.auth.jwt;
+package com.moa.moa_be.domain.auth.jwt;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
