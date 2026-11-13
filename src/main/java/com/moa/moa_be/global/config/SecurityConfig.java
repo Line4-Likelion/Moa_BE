@@ -1,7 +1,7 @@
 package com.moa.moa_be.global.config;
 
-import com.moa.moa_be.auth.jwt.JwtAuthenticationFilter;
-import com.moa.moa_be.auth.jwt.JwtTokenProvider;
+import com.moa.moa_be.domain.auth.jwt.JwtAuthenticationFilter;
+import com.moa.moa_be.domain.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

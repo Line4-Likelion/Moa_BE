@@ -1,12 +1,12 @@
-package com.moa.moa_be.auth.controller;
+package com.moa.moa_be.domain.auth.controller;
 
-import com.moa.moa_be.auth.dto.AuthResponse;
-import com.moa.moa_be.auth.dto.LoginRequest;
-import com.moa.moa_be.auth.service.AuthService;
+import com.moa.moa_be.domain.auth.dto.AuthResponse;
+import com.moa.moa_be.domain.auth.dto.LoginRequest;
+import com.moa.moa_be.domain.auth.service.AuthService;
 import com.moa.moa_be.global.common.BaseResponse;
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
-import com.moa.moa_be.user.dto.SignUpRequest;
+import com.moa.moa_be.domain.user.dto.SignUpRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

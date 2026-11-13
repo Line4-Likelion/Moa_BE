@@ -1,6 +1,6 @@
-package com.moa.moa_be.user.dto;
+package com.moa.moa_be.domain.user.dto;
 
-import com.moa.moa_be.user.entity.User;
+import com.moa.moa_be.domain.user.entity.User;
 import lombok.Getter;
 
 @Getter

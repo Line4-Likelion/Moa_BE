@@ -1,4 +1,4 @@
-package com.moa.moa_be.user.entity;
+package com.moa.moa_be.domain.user.entity;
 
 import com.moa.moa_be.global.common.BaseTimeEntity;
 import jakarta.persistence.*;

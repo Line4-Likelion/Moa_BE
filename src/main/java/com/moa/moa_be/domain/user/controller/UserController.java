@@ -1,10 +1,10 @@
-package com.moa.moa_be.user.controller;
+package com.moa.moa_be.domain.user.controller;
 
 import com.moa.moa_be.global.common.BaseResponse;
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
-import com.moa.moa_be.user.dto.UserResponse;
-import com.moa.moa_be.user.service.UserService;
+import com.moa.moa_be.domain.user.dto.UserResponse;
+import com.moa.moa_be.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

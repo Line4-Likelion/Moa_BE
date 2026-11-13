@@ -1,11 +1,11 @@
-package com.moa.moa_be.user.service;
+package com.moa.moa_be.domain.user.service;
 
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
-import com.moa.moa_be.user.dto.SignUpRequest;
-import com.moa.moa_be.user.dto.UserResponse;
-import com.moa.moa_be.user.entity.User;
-import com.moa.moa_be.user.repository.UserRepository;
+import com.moa.moa_be.domain.user.dto.SignUpRequest;
+import com.moa.moa_be.domain.user.dto.UserResponse;
+import com.moa.moa_be.domain.user.entity.User;
+import com.moa.moa_be.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
