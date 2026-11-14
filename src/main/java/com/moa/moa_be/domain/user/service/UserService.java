@@ -6,6 +6,7 @@ import com.moa.moa_be.domain.user.dto.SignUpRequest;
 import com.moa.moa_be.domain.user.dto.UserResponse;
 import com.moa.moa_be.domain.user.entity.User;
 import com.moa.moa_be.domain.user.repository.UserRepository;
+import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ScreenshotClassificationRepository screenshotClassificationRepository;
 
     @Transactional
     public UserResponse signup(SignUpRequest request) {
@@ -50,6 +52,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(GlobalErrorCode.USER_NOT_FOUND));
 
+        screenshotClassificationRepository.deleteByUserId(userId);
         userRepository.delete(user);
     }
 }
