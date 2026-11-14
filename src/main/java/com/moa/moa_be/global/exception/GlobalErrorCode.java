@@ -40,7 +40,11 @@ public enum GlobalErrorCode implements BaseErrorCode {
     // 500 / 502 / 504
     INTERNAL_ERROR("INTERNAL_ERROR", "서버 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     ANALYSIS_FAILED("ANALYSIS_FAILED", "AI 분석 작업에 실패했습니다.", HttpStatus.BAD_GATEWAY),
-    ANALYSIS_TIMEOUT("ANALYSIS_TIMEOUT", "AI 분석 작업 시간이 초과되었습니다.", HttpStatus.GATEWAY_TIMEOUT);
+    ANALYSIS_TIMEOUT("ANALYSIS_TIMEOUT", "AI 분석 작업 시간이 초과되었습니다.", HttpStatus.GATEWAY_TIMEOUT),
+
+    // 500 Internal Server Error (Firebase 관련)
+    FIREBASE_INIT_FAILED("FIREBASE_INIT_FAILED", "Firebase 서버 인증 키 파일을 읽어오지 못했거나 초기화에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    FCM_SEND_FAILED("FCM_SEND_FAILED", "FCM 푸시 알림 전송에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String message;
