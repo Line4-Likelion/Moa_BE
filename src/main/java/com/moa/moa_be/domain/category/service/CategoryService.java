@@ -1,6 +1,6 @@
 package com.moa.moa_be.domain.category.service;
 
-import com.moa.moa_be.domain.analysis.repository.ScreenshotAnalysisRepository;
+import com.moa.moa_be.domain.capture.repository.CaptureQueryRepository;
 import com.moa.moa_be.domain.category.dto.CategoryCreateRequest;
 import com.moa.moa_be.domain.category.dto.CategoryListResponse;
 import com.moa.moa_be.domain.category.dto.CategoryResponse;
@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,16 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final ScreenshotAnalysisRepository screenshotAnalysisRepository;
+    private final CaptureQueryRepository captureQueryRepository;
 
     /** B-3: 기본 카테고리 → 사용자 카테고리(만든 순) → 기타 */
     @Transactional
     public CategoryListResponse getCategories(Long userId) {
         // 기본 카테고리 생성 기능 이전에 가입한 계정이면 여기서 채워 줌
         createDefaultCategories(userId);
-        // TODO(C 파트 머지 후): 완료·안함 처리된 항목은 빼고 '실천 대기'만 세기
-        Map<Long, Long> counts = screenshotAnalysisRepository.countSucceededByCategory(userId).stream()
-                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        // 실천 대기(TODO)만 셈: 완료·안함·분석 중·실패는 제외 (실천함 목록의 todo_count 와 같은 기준)
+        Map<Long, Long> counts = captureQueryRepository.countTodoByCategory(userId);
         List<CategoryResponse> categories = categoryRepository.findAllByUserId(userId).stream()
                 .sorted(displayOrder())
                 .map(category -> CategoryResponse.of(category, counts.getOrDefault(category.getId(), 0L)))
