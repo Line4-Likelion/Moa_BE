@@ -35,4 +35,9 @@ public interface ScreenshotAnalysisRepository extends JpaRepository<ScreenshotAn
     void deleteAllByUserId(Long userId);
 
     void deleteByCaptureId(Long captureId);
+
+    List<ScreenshotAnalysis> findAllByUserIdAndStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(
+            Long userId,
+            AnalysisStatus status
+    );
 }

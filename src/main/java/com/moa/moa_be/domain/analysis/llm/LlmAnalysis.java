@@ -16,7 +16,8 @@ public record LlmAnalysis(
         String summary,
         List<Fact> facts,
         Guide guide,
-        List<String> checklist
+        List<String> checklist,
+        Place place
 ) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -43,6 +44,13 @@ public record LlmAnalysis(
             List<String> lines,
             List<String> preparations,
             List<String> links
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Place(
+            String name,
+            String address
     ) {
     }
 }

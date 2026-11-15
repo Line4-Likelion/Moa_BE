@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.moa.moa_be.domain.alarm.service.AlarmService;
+import com.moa.moa_be.domain.alarm.service.GeocodingService;
 import com.moa.moa_be.domain.analysis.config.AnalysisProperties;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
@@ -38,9 +40,14 @@ class AnalysisClassificationIntegrationTest {
         jobs = mock(AnalysisJobStore.class);
         executor = mock(ThreadPoolTaskExecutor.class);
         @SuppressWarnings("unchecked") ObjectProvider<JsonMapper> mapper = mock(ObjectProvider.class);
-        service = new AnalysisJobService(analysis, jobs, mock(AnalysisPushSender.class),
+        AlarmService alarmService = mock(AlarmService.class);
+
+        service = new AnalysisJobService(
+                analysis, jobs, mock(AnalysisPushSender.class),
                 mock(CategoryService.class), mock(CategoryRepository.class),
-                new AnalysisProperties(null, null, 50), executor, mapper, captures);
+                new AnalysisProperties(null, null, 50), executor, mapper, captures,
+                alarmService, mock(GeocodingService.class)
+        );
     }
 
     @Test

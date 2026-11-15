@@ -1,3 +1,4 @@
+
 package com.moa.moa_be.domain.alarm.controller;
 
 import com.moa.moa_be.domain.alarm.dto.AlarmTestRequest;
@@ -21,20 +22,33 @@ public class AlarmDevController {
 
     private final FcmService fcmService;
 
-    @Operation(summary = "개발/시연용 테스트 알림 전송", description = "지정한 알림을 내 기기로 바로 전송합니다. (개발 서버 전용)")
+    @Operation(
+            summary = "개발/시연용 테스트 알림 전송",
+            description = "지정한 알림을 내 기기로 바로 전송합니다. (개발 서버 전용)"
+    )
     @PostMapping("/test")
     public ResponseEntity<BaseResponse<Void>> sendTestAlarm(
             @RequestBody AlarmTestRequest request
     ) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new CustomException(GlobalErrorCode.UNAUTHORIZED);
         }
 
         Long userId = (Long) authentication.getPrincipal();
 
-        fcmService.sendTestNotificationByType(userId, request.getType(), request.getCaptureId());
+        fcmService.sendTestNotificationByType(
+                userId,
+                request.getType(),
+                request.getCaptureId(),
+                request.getTitle(),
+                request.getBody()
+        );
 
-        return ResponseEntity.ok(BaseResponse.success("테스트 알림이 성공적으로 전송되었습니다.", null));
+        return ResponseEntity.ok(
+                BaseResponse.success("테스트 알림이 성공적으로 전송되었습니다.", null)
+        );
     }
 }
