@@ -55,7 +55,7 @@ public class CaptureActionService {
                 return new CaptureActionResponse(assembler.toSummary(userId, row), null);
             }
             var previous = capture.snapshot();
-            apply(capture, action, request.snoozeUntil());
+            apply(capture, action, request.snoozeUntil(), row.analysis());
             undo = undoStore.issue(userId, captureId, action, previous);
         }
 
@@ -71,13 +71,14 @@ public class CaptureActionService {
                         CaptureTimes.toKst(undo.expiresAt())));
     }
 
-    private static void apply(ScreenshotClassification capture, CaptureAction action, LocalDate snoozeUntil) {
+    private static void apply(ScreenshotClassification capture, CaptureAction action, LocalDate snoozeUntil,
+                              ScreenshotAnalysis analysis) {
         Instant now = Instant.now();
         switch (action) {
             case COMPLETE -> capture.complete(now);
             case SNOOZE -> capture.snooze(snoozeDate(snoozeUntil));
-            // 분석 내용은 되돌리기 시간이 지난 뒤 DismissCleanupScheduler 가 삭제
-            case DISMISS -> capture.dismiss(now);
+            // 카테고리는 참고함에서도 유지, 나머지 분석 내용은 되돌리기 시간이 지난 뒤 DismissCleanupScheduler 가 삭제
+            case DISMISS -> capture.dismiss(now, analysis == null ? null : analysis.getCategoryId());
             case REOPEN -> capture.reopen(now);
             case UNDO -> throw new IllegalStateException("UNDO 는 따로 처리");
         }

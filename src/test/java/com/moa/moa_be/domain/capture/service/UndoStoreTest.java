@@ -20,7 +20,7 @@ import org.junit.jupiter.api.function.Executable;
 class UndoStoreTest {
 
     private static final StateSnapshot PREVIOUS =
-            new StateSnapshot(Classification.PRACTICE, null, null, false, Instant.parse("2026-11-01T00:00:00Z"));
+            new StateSnapshot(Classification.PRACTICE, null, null, false, Instant.parse("2026-11-01T00:00:00Z"), null);
 
     private MutableClock clock;
     private UndoStore store;

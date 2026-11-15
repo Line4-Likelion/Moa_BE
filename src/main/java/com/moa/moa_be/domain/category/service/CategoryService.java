@@ -94,7 +94,8 @@ public class CategoryService {
                 .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
     }
 
-    private Comparator<Category> displayOrder() {
+    /** 카테고리 표시 순서. 참고함 칩 순서(C 파트)에서도 같은 기준을 쓴다 */
+    public static Comparator<Category> displayOrder() {
         return Comparator
                 .comparingInt((Category c) -> c.isOther() ? 2 : (c.isCustom() ? 1 : 0))
                 .thenComparingInt(c -> DefaultCategory.orderOf(c.getName()))

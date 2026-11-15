@@ -44,7 +44,7 @@ public class CaptureController {
 
     @Operation(summary = "캡처 목록 (실천 목록·완료함·참고함)",
             description = "status=TODO 실천 목록(기본 정렬 deadline), DONE 완료함·REFERENCE 참고함(기본 정렬 recent). "
-                    + "facets 는 실천 목록·완료함에서만 내려갑니다.")
+                    + "facets: 실천 목록·완료함은 snoozed·total, 참고함은 total·categories(칩 개수, 카테고리 없는 항목은 기타에 포함).")
     @GetMapping
     public BaseResponse<CaptureListResponse> list(
             @AuthenticationPrincipal Long userId,
@@ -57,9 +57,11 @@ public class CaptureController {
             @Parameter(description = "기본 20, 최대 100") @RequestParam(required = false) Integer limit,
             @Parameter(description = "그날 완료한 항목 (YYYY-MM-DD)")
             @RequestParam(name = "completed_on", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate completedOn) {
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate completedOn,
+            @Parameter(description = "카테고리 필터. 참고함에서 기타를 고르면 카테고리 없는 항목도 포함")
+            @RequestParam(name = "category_id", required = false) String categoryId) {
         return BaseResponse.success(
-                captureService.list(userId, status, snoozed, sort, cursor, limit, completedOn));
+                captureService.list(userId, status, snoozed, sort, cursor, limit, completedOn, categoryId));
     }
 
     @Operation(summary = "캡처 상세 (C-01~C-06)", description = "원본 사진은 서버에 없으므로 file_key 만 내려갑니다.")

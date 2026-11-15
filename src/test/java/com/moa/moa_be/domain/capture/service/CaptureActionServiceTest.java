@@ -112,6 +112,7 @@ class CaptureActionServiceTest {
 
         assertEquals(Classification.REFERENCE, capture.getClassification());
         assertTrue(capture.isDismissed());
+        assertEquals(3L, capture.getCategoryId()); // 실천일 때의 카테고리를 참고함에서도 유지
         assertEvent(CaptureStatus.TODO, CaptureStatus.REFERENCE);
     }
 
@@ -124,6 +125,7 @@ class CaptureActionServiceTest {
         assertNull(response.undo());
         assertEquals(Classification.PRACTICE, capture.getClassification());
         assertFalse(capture.isDismissed());
+        assertNull(capture.getCategoryId());
     }
 
     @Test

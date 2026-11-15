@@ -82,7 +82,7 @@ public class CaptureAssembler {
         if (rows.isEmpty()) {
             return List.of();
         }
-        Function<Long, CategoryInfo> categories = categoryLookup(userId, rows);
+        CategoryLookup categories = categoryLookup(userId, rows);
         List<Long> analyzedIds = rows.stream().filter(CaptureAssembler::hasAnalysisContent)
                 .map(r -> r.capture().getId()).toList();
         Map<Long, List<ChecklistCheck>> checks = analyzedIds.isEmpty() ? Map.of()
@@ -103,7 +103,7 @@ public class CaptureAssembler {
         ScreenshotClassification c = row.capture();
         ScreenshotAnalysis a = row.analysis();
         AnalysisResult result = readResult(row);
-        Function<Long, CategoryInfo> categories = categoryLookup(userId, List.of(row));
+        CategoryLookup categories = categoryLookup(userId, List.of(row));
         Set<Integer> checked = result == null ? Set.of()
                 : currentCheckedItems(checklistCheckRepository.findAllByCaptureId(c.getId()), a);
         CaptureSummaryResponse s = summary(row, result, categories, checked);
@@ -194,15 +194,18 @@ public class CaptureAssembler {
     }
 
     private CaptureSummaryResponse summary(CaptureRow row, AnalysisResult result,
-                                           Function<Long, CategoryInfo> categories, Set<Integer> checked) {
+                                           CategoryLookup categories, Set<Integer> checked) {
         ScreenshotClassification c = row.capture();
         ScreenshotAnalysis a = row.analysis();
         boolean analyzed = result != null;
+        CategoryInfo category = analyzed ? categories.of(a.getCategoryId())
+                : row.status() == CaptureStatus.REFERENCE ? categories.ofReference(c.getCategoryId())
+                : null;
         return new CaptureSummaryResponse(
                 c.getId(),
                 c.getFileKey(),
                 row.status(),
-                analyzed && a.getCategoryId() != null ? categories.apply(a.getCategoryId()) : null,
+                category,
                 analyzed ? a.getTitle() : null,
                 analyzed ? result.summary() : null,
                 analyzed ? deadline(a, result) : null,
@@ -233,20 +236,37 @@ public class CaptureAssembler {
         return facts;
     }
 
-    private Function<Long, CategoryInfo> categoryLookup(Long userId, List<CaptureRow> rows) {
-        boolean anyCategory = rows.stream()
-                .anyMatch(r -> hasAnalysisContent(r) && r.analysis().getCategoryId() != null);
-        if (!anyCategory) {
-            return id -> null;
+    private CategoryLookup categoryLookup(Long userId, List<CaptureRow> rows) {
+        boolean needed = rows.stream().anyMatch(r -> r.status() == CaptureStatus.REFERENCE
+                || (hasAnalysisContent(r) && r.analysis().getCategoryId() != null));
+        if (!needed) {
+            return new CategoryLookup(Map.of(), Map.of());
         }
         Map<Long, Category> byId = categoryRepository.findAllByUserId(userId).stream()
                 .collect(Collectors.toMap(Category::getId, Function.identity()));
-        Map<Long, Long> todoCounts = captureQueryRepository.countTodoByCategory(userId);
-        return id -> {
-            Category category = byId.get(id);
+        return new CategoryLookup(byId, captureQueryRepository.countTodoByCategory(userId));
+    }
+
+    private record CategoryLookup(Map<Long, Category> byId, Map<Long, Long> todoCounts) {
+
+        /** 실천 항목: 분석 결과의 카테고리 (없거나 지워졌으면 null) */
+        CategoryInfo of(Long id) {
+            return id == null ? null : info(byId.get(id));
+        }
+
+        /** 참고함 항목: 카테고리가 없거나 지워졌으면 "기타"(미분류) */
+        CategoryInfo ofReference(Long id) {
+            Category category = id == null ? null : byId.get(id);
+            if (category == null) {
+                category = byId.values().stream().filter(Category::isOther).findFirst().orElse(null);
+            }
+            return info(category);
+        }
+
+        private CategoryInfo info(Category category) {
             return category == null ? null : new CategoryInfo(category.getId(), category.getName(),
-                    category.isCustom(), todoCounts.getOrDefault(id, 0L));
-        };
+                    category.isCustom(), todoCounts.getOrDefault(category.getId(), 0L));
+        }
     }
 
     private static String host(String url) {

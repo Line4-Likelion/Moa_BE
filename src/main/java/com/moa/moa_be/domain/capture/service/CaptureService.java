@@ -11,6 +11,9 @@ import com.moa.moa_be.domain.capture.repository.CaptureListCondition;
 import com.moa.moa_be.domain.capture.repository.CaptureListCondition.Sort;
 import com.moa.moa_be.domain.capture.repository.CaptureQueryRepository;
 import com.moa.moa_be.domain.capture.repository.CaptureRow;
+import com.moa.moa_be.domain.category.entity.Category;
+import com.moa.moa_be.domain.category.repository.CategoryRepository;
+import com.moa.moa_be.domain.category.service.CategoryService;
 import com.moa.moa_be.domain.screenshot.entity.ScreenshotClassification;
 import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
 import com.moa.moa_be.global.exception.CustomException;
@@ -22,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -40,13 +45,14 @@ public class CaptureService {
     private final CaptureQueryRepository captureQueryRepository;
     private final ScreenshotClassificationRepository classificationRepository;
     private final ScreenshotAnalysisRepository analysisRepository;
+    private final CategoryRepository categoryRepository;
     private final CaptureAssembler assembler;
     private final UndoStore undoStore;
     private final ApplicationEventPublisher eventPublisher;
 
     /** GET /captures */
     public CaptureListResponse list(Long userId, String status, Boolean snoozed, String sort, String cursor,
-                                    Integer limit, LocalDate completedOn) {
+                                    Integer limit, LocalDate completedOn, String categoryId) {
         Map<String, String> errors = new LinkedHashMap<>();
         CaptureStatus tab = parseStatus(status, errors);
         Sort order = parseSort(sort, tab, errors);
@@ -55,28 +61,56 @@ public class CaptureService {
         if (size < 1 || size > MAX_LIMIT) {
             errors.put("limit", "1~" + MAX_LIMIT + " 사이로 입력해주세요");
         }
+        Long filterCategoryId = parseCategoryId(categoryId, errors);
         if (!errors.isEmpty()) {
             throw new FieldValidationException(errors);
         }
+        Category filterCategory = filterCategoryId == null ? null
+                : categoryRepository.findByIdAndUserId(filterCategoryId, userId)
+                .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
 
         CaptureListCondition condition = new CaptureListCondition(tab, snoozed, CaptureTimes.today(),
                 completedOn == null ? null : CaptureTimes.startOf(completedOn),
                 completedOn == null ? null : CaptureTimes.startOf(completedOn.plusDays(1)),
-                order);
+                filterCategoryId, filterCategory != null && filterCategory.isOther(), order);
 
         List<CaptureRow> rows = captureQueryRepository.findPage(userId, condition, offset, size + 1);
         boolean hasNext = rows.size() > size;
         List<CaptureSummaryResponse> items = assembler.toSummaries(userId, hasNext ? rows.subList(0, size) : rows);
         String nextCursor = hasNext ? encodeCursor(offset + size) : null;
 
-        CaptureListResponse.Facets facets = null;
-        if (tab != CaptureStatus.REFERENCE) {
+        CaptureListResponse.Facets facets;
+        if (tab == CaptureStatus.REFERENCE) {
+            List<Category> categories = categoryRepository.findAllByUserId(userId).stream()
+                    .sorted(CategoryService.displayOrder())
+                    .toList();
+            facets = referenceFacets(categories, captureQueryRepository.countReferenceByCategory(userId));
+        } else {
             CaptureListCondition whole = condition.tabOnly();
-            facets = new CaptureListResponse.Facets(
+            facets = CaptureListResponse.Facets.ofTab(
                     captureQueryRepository.count(userId, whole.withSnoozed(true)),
                     captureQueryRepository.count(userId, whole));
         }
         return new CaptureListResponse(items, nextCursor, facets);
+    }
+
+    /**
+     * 참고함 칩 개수. 카테고리 표시 순서대로 모두 내려주고(없으면 0),
+     * 카테고리가 없거나 지워진 카테고리의 항목은 "기타"에 합친다.
+     *
+     * @param counts categoryId(없으면 null) → 항목 수
+     */
+    static CaptureListResponse.Facets referenceFacets(List<Category> orderedCategories, Map<Long, Long> counts) {
+        Set<Long> known = orderedCategories.stream().map(Category::getId).collect(Collectors.toSet());
+        long uncategorized = counts.entrySet().stream()
+                .filter(e -> e.getKey() == null || !known.contains(e.getKey()))
+                .mapToLong(Map.Entry::getValue)
+                .sum();
+        List<CaptureListResponse.CategoryCount> result = orderedCategories.stream()
+                .map(c -> new CaptureListResponse.CategoryCount(c.getId(), c.getName(),
+                        counts.getOrDefault(c.getId(), 0L) + (c.isOther() ? uncategorized : 0)))
+                .toList();
+        return CaptureListResponse.Facets.ofReference(result);
     }
 
     /** GET /captures/{id} */
@@ -121,6 +155,18 @@ public class CaptureService {
         }
         errors.put("status", "TODO, DONE, REFERENCE 중 하나로 입력해주세요");
         return CaptureStatus.TODO;
+    }
+
+    private static Long parseCategoryId(String categoryId, Map<String, String> errors) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(categoryId.trim());
+        } catch (NumberFormatException e) {
+            errors.put("category_id", "카테고리 id 를 숫자로 입력해주세요");
+            return null;
+        }
     }
 
     private static Sort parseSort(String sort, CaptureStatus tab, Map<String, String> errors) {

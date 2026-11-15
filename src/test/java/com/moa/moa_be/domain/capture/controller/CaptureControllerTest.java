@@ -112,27 +112,33 @@ class CaptureControllerTest {
 
     @Test
     void listHasNextCursorAndFacets() throws Exception {
-        when(captureService.list(eq(1L), eq("TODO"), eq(true), eq("deadline"), isNull(), isNull(), isNull()))
-                .thenReturn(new CaptureListResponse(List.of(summary()), "bzoyMA",
-                new CaptureListResponse.Facets(1, 3)));
+        when(captureService.list(eq(1L), eq("TODO"), eq(true), eq("deadline"), isNull(), isNull(), isNull(),
+                isNull())).thenReturn(new CaptureListResponse(List.of(summary()), "bzoyMA",
+                CaptureListResponse.Facets.ofTab(1, 3)));
 
         mvc.perform(get("/captures").param("status", "TODO").param("snoozed", "true").param("sort", "deadline"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].snooze_until").value("2026-11-20"))
                 .andExpect(jsonPath("$.data.next_cursor").value("bzoyMA"))
                 .andExpect(jsonPath("$.data.facets.snoozed").value(1))
-                .andExpect(jsonPath("$.data.facets.total").value(3));
+                .andExpect(jsonPath("$.data.facets.total").value(3))
+                .andExpect(jsonPath("$.data.facets.categories").doesNotExist());
     }
 
     @Test
-    void referenceListHasNoFacets() throws Exception {
-        when(captureService.list(eq(1L), eq("REFERENCE"), isNull(), isNull(), isNull(), isNull(), isNull()))
-                .thenReturn(new CaptureListResponse(List.of(), null, null));
+    void referenceListHasCategoryFacets() throws Exception {
+        when(captureService.list(eq(1L), eq("REFERENCE"), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq("3"))).thenReturn(new CaptureListResponse(List.of(), null, CaptureListResponse.Facets.ofReference(
+                List.of(new CaptureListResponse.CategoryCount(3L, "맛집", 1),
+                        new CaptureListResponse.CategoryCount(7L, "기타", 2)))));
 
-        mvc.perform(get("/captures").param("status", "REFERENCE"))
+        mvc.perform(get("/captures").param("status", "REFERENCE").param("category_id", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items").isEmpty())
-                .andExpect(jsonPath("$.data.facets").doesNotExist());
+                .andExpect(jsonPath("$.data.facets.total").value(3))
+                .andExpect(jsonPath("$.data.facets.snoozed").doesNotExist())
+                .andExpect(jsonPath("$.data.facets.categories[0].name").value("맛집"))
+                .andExpect(jsonPath("$.data.facets.categories[1].count").value(2));
     }
 
     @Test

@@ -96,6 +96,21 @@ public class CaptureQueryRepository {
                 .toList();
     }
 
+    /** 참고함 카테고리별 항목 수 [categoryId(없으면 null) → count] */
+    public Map<Long, Long> countReferenceByCategory(Long userId) {
+        List<Object[]> rows = em.createQuery("""
+                        select c.categoryId, count(c) from ScreenshotClassification c
+                        where c.user.id = :userId and c.classification = :reference
+                        group by c.categoryId
+                        """, Object[].class)
+                .setParameter("userId", userId)
+                .setParameter("reference", Classification.REFERENCE)
+                .getResultList();
+        Map<Long, Long> counts = new HashMap<>();
+        rows.forEach(r -> counts.put((Long) r[0], (Long) r[1]));
+        return counts;
+    }
+
     /** 안함(DISMISS) 후 되돌리기 시간이 지났는데 아직 분석 결과가 남아 있는 캡처 id */
     public List<Long> findDismissedWithAnalysis(Instant dismissedBefore) {
         return em.createQuery("""
@@ -120,6 +135,16 @@ public class CaptureQueryRepository {
             sb.append(" and c.completedAt >= :completedFrom and c.completedAt < :completedTo");
             params.put("completedFrom", condition.completedFrom());
             params.put("completedTo", condition.completedTo());
+        }
+        if (condition.categoryId() != null) {
+            if (condition.status() != CaptureStatus.REFERENCE) {
+                sb.append(" and a.categoryId = :categoryId");
+            } else if (condition.categoryIsOther()) {
+                sb.append(" and (c.categoryId = :categoryId or c.categoryId is null)");
+            } else {
+                sb.append(" and c.categoryId = :categoryId");
+            }
+            params.put("categoryId", condition.categoryId());
         }
         return sb.toString();
     }

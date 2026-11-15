@@ -52,6 +52,13 @@ public class ScreenshotClassification {
     @Column(name = "status_changed_at")
     private Instant statusChangedAt;
 
+    /**
+     * 참고함 카테고리. null 이면 "기타"(미분류)로 본다.
+     * 실천 항목의 카테고리는 분석 결과(screenshot_analyses.category_id)에 있고, 안함으로 참고함에 오면 그 값을 옮겨 둔다.
+     */
+    @Column(name = "category_id")
+    private Long categoryId;
+
     public ScreenshotClassification(User user, String fileKey, Classification classification) {
         this.user = user;
         this.fileKey = fileKey;
@@ -66,6 +73,7 @@ public class ScreenshotClassification {
             this.completedAt = null;
             this.snoozeUntil = null;
             this.dismissed = false;
+            this.categoryId = null;
             this.statusChangedAt = Instant.now();
         }
         this.classification = classification;
@@ -85,9 +93,11 @@ public class ScreenshotClassification {
         this.snoozeUntil = until;
     }
 
-    public void dismiss(Instant now) {
+    /** @param categoryId 실천일 때의 AI(또는 사용자가 바꾼) 카테고리를 참고함에서도 유지 */
+    public void dismiss(Instant now, Long categoryId) {
         this.classification = Classification.REFERENCE;
         this.dismissed = true;
+        this.categoryId = categoryId;
         this.completedAt = null;
         this.snoozeUntil = null;
         this.statusChangedAt = now;
@@ -98,9 +108,14 @@ public class ScreenshotClassification {
         this.statusChangedAt = now;
     }
 
+    /** 참고함 카테고리 변경. null 이면 기타(미분류) */
+    public void changeReferenceCategory(Long categoryId) {
+        this.categoryId = categoryId;
+    }
+
     /** 되돌리기(C-11)용 상태 스냅샷 */
     public StateSnapshot snapshot() {
-        return new StateSnapshot(classification, completedAt, snoozeUntil, dismissed, statusChangedAt);
+        return new StateSnapshot(classification, completedAt, snoozeUntil, dismissed, statusChangedAt, categoryId);
     }
 
     public void restore(StateSnapshot snapshot) {
@@ -109,9 +124,10 @@ public class ScreenshotClassification {
         this.snoozeUntil = snapshot.snoozeUntil();
         this.dismissed = snapshot.dismissed();
         this.statusChangedAt = snapshot.statusChangedAt();
+        this.categoryId = snapshot.categoryId();
     }
 
     public record StateSnapshot(Classification classification, Instant completedAt, LocalDate snoozeUntil,
-                                boolean dismissed, Instant statusChangedAt) {
+                                boolean dismissed, Instant statusChangedAt, Long categoryId) {
     }
 }
