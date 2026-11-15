@@ -157,6 +157,12 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
         this.finishedAt = LocalDateTime.now();
     }
 
+    /** C-07: 사용자가 마감기한을 직접 고치거나 AI 값으로 되돌림 */
+    public void changeDeadline(DeadlineStatus deadlineStatus, LocalDate deadlineDate) {
+        this.deadlineStatus = deadlineStatus;
+        this.deadlineDate = deadlineDate;
+    }
+
     /** B-4: 사용자가 카테고리를 직접 변경 */
     public void changeCategory(Long categoryId) {
         this.categoryId = categoryId;
