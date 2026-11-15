@@ -9,6 +9,12 @@ spring:
     username: moa_user
     password: moa1234!
 
+  # 이미지 업로드 (분석용 스크린샷 10MB 이하)
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
   # JPA 설정
   jpa:
     hibernate:
@@ -26,3 +32,12 @@ springdoc:
     operations-sorter: method
   api-docs:
     path: /v3/api-docs
+
+# AI 분석 (OCR + LLM). 키는 환경변수로만 넣기
+analysis:
+  vision:
+    api-key: ${GOOGLE_VISION_API_KEY:}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4.1-mini}
+  daily-limit: ${ANALYSIS_DAILY_LIMIT:50}   # 사용자 1명당 하루 분석 상한

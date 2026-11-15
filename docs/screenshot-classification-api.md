@@ -28,4 +28,18 @@
 - `PATCH /screenshot-classifications/{id}`: `{"classification":"PRACTICE"}` 또는 `{"classification":"REFERENCE"}`로 분류를 변경합니다. 삭제 기록은 변경할 수 없습니다.
 - `DELETE /screenshot-classifications/{id}`: 로그인한 사용자의 해당 분류 기록을 취소합니다. 기기에서 이미 삭제된 사진은 복구되지 않습니다.
 
-현재 API는 분류 기록만 저장합니다. 사진 원본 업로드, 원본 조회, AI 분석 요청, 프론트엔드 연동은 아직 구현되지 않았습니다. 사진 저장 방식과 API 형식은 팀에서 협의한 명세에 맞춰 조정해야 합니다.
+## 실천 사진 AI 분석 요청 (A-09)
+
+1. 분류 결과 저장 응답에서 `PRACTICE` 항목의 `id`를 확인합니다. 이 값이 아래 API의 `captureId`입니다.
+2. `POST /captures/{captureId}/analysis`에 Bearer access token과 `multipart/form-data`의 `image` 파일을 전송합니다. 본인 소유의 `PRACTICE` 기록에만 요청할 수 있습니다.
+3. 응답은 `202`와 `jobId`, `pollAfterMs`를 반환합니다. `GET /analysis-jobs?ids={jobId}`로 상태를 확인하고 실패 시 원인을 표시해 재시도할 수 있습니다. 성공한 결과는 `GET /captures/{captureId}/analysis`로 조회합니다.
+
+예시:
+
+```sh
+curl -X POST "$API_URL/captures/12/analysis" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "image=@screenshot.png"
+```
+
+실천을 참고로 변경하거나 분류를 취소하면 해당 분석 결과도 삭제됩니다. 실천으로 다시 변경한 경우 파일을 다시 전송해 분석을 요청해야 합니다. 분석용 이미지는 분석 처리에만 사용하고 저장하지 않습니다. 프론트엔드가 분석 요청을 보내는 연동과 사진 원본 보관은 별도 작업입니다.

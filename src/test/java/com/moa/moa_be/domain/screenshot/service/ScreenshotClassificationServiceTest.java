@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.moa.moa_be.domain.screenshot.dto.ClassificationBatchRequest;
+import com.moa.moa_be.domain.analysis.repository.ScreenshotAnalysisRepository;
 import com.moa.moa_be.domain.screenshot.entity.Classification;
 import com.moa.moa_be.domain.screenshot.entity.ScreenshotClassification;
 import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
@@ -21,13 +22,15 @@ import org.junit.jupiter.api.Test;
 class ScreenshotClassificationServiceTest {
     private ScreenshotClassificationRepository repository;
     private UserRepository users;
+    private ScreenshotAnalysisRepository analyses;
     private ScreenshotClassificationService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ScreenshotClassificationRepository.class);
         users = mock(UserRepository.class);
-        service = new ScreenshotClassificationService(repository, users);
+        analyses = mock(ScreenshotAnalysisRepository.class);
+        service = new ScreenshotClassificationService(repository, users, analyses);
     }
 
     @Test
@@ -67,7 +70,7 @@ class ScreenshotClassificationServiceTest {
 
     @Test
     void cannotCancelAnotherUsersClassification() {
-        when(repository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
+        when(repository.findOwnedForUpdate(10L, 1L)).thenReturn(Optional.empty());
         CustomException error = assertThrows(CustomException.class, () -> service.cancel(1L, 10L));
         assertEquals(GlobalErrorCode.NOT_FOUND, error.getErrorCode());
         verify(repository, never()).delete(any(ScreenshotClassification.class));
@@ -77,20 +80,34 @@ class ScreenshotClassificationServiceTest {
     void changesPracticeToReferenceForOwner() {
         User user = User.builder().email("user@example.com").password("password").nickname("user").build();
         ScreenshotClassification record = new ScreenshotClassification(user, "photo-1", Classification.PRACTICE);
-        when(repository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(record));
+        when(repository.findOwnedForUpdate(10L, 1L)).thenReturn(Optional.of(record));
 
         assertEquals(Classification.REFERENCE, service.change(1L, 10L, Classification.REFERENCE).classification());
         assertEquals(Classification.REFERENCE, record.getClassification());
+        verify(analyses).deleteByCaptureId(10L);
     }
 
     @Test
     void rejectsChangingToDelete() {
         User user = User.builder().email("user@example.com").password("password").nickname("user").build();
         ScreenshotClassification record = new ScreenshotClassification(user, "photo-1", Classification.PRACTICE);
-        when(repository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(record));
+        when(repository.findOwnedForUpdate(10L, 1L)).thenReturn(Optional.of(record));
 
         CustomException error = assertThrows(CustomException.class, () -> service.change(1L, 10L, Classification.DELETE));
         assertEquals(GlobalErrorCode.INVALID_STATE_TRANSITION, error.getErrorCode());
         assertEquals(Classification.PRACTICE, record.getClassification());
+        verifyNoInteractions(analyses);
+    }
+
+    @Test
+    void cancelRemovesAnalysisAndClassification() {
+        User user = User.builder().email("user@example.com").password("password").nickname("user").build();
+        ScreenshotClassification record = new ScreenshotClassification(user, "photo-1", Classification.PRACTICE);
+        when(repository.findOwnedForUpdate(10L, 1L)).thenReturn(Optional.of(record));
+
+        service.cancel(1L, 10L);
+
+        verify(analyses).deleteByCaptureId(10L);
+        verify(repository).delete(record);
     }
 }
