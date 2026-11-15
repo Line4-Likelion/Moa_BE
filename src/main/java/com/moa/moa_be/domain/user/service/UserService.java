@@ -8,6 +8,7 @@ import com.moa.moa_be.domain.user.dto.SignUpRequest;
 import com.moa.moa_be.domain.user.dto.UserResponse;
 import com.moa.moa_be.domain.user.entity.User;
 import com.moa.moa_be.domain.user.repository.UserRepository;
+import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ScreenshotClassificationRepository screenshotClassificationRepository;
     private final CategoryService categoryService;
     private final ScreenshotAnalysisRepository screenshotAnalysisRepository;
 
@@ -56,6 +58,7 @@ public class UserService {
 
         screenshotAnalysisRepository.deleteAllByUserId(userId);
         categoryService.deleteAllByUserId(userId);
+        screenshotClassificationRepository.deleteByUserId(userId);
         userRepository.delete(user);
     }
 }

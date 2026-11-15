@@ -10,6 +10,8 @@ import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
 import com.moa.moa_be.domain.category.entity.Category;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
 import com.moa.moa_be.domain.category.service.CategoryService;
+import com.moa.moa_be.domain.screenshot.entity.Classification;
+import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
 import java.util.List;
@@ -20,6 +22,9 @@ import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -41,6 +46,7 @@ public class AnalysisJobService {
     private final AnalysisProperties properties;
     private final ThreadPoolTaskExecutor analysisExecutor;
     private final JsonMapper jsonMapper;
+    private final ScreenshotClassificationRepository screenshotRepository;
 
     public AnalysisJobService(AnalysisService analysisService,
                               AnalysisJobStore jobStore,
@@ -49,7 +55,8 @@ public class AnalysisJobService {
                               CategoryRepository categoryRepository,
                               AnalysisProperties properties,
                               @Qualifier("analysisExecutor") ThreadPoolTaskExecutor analysisExecutor,
-                              ObjectProvider<JsonMapper> jsonMapper) {
+                              ObjectProvider<JsonMapper> jsonMapper,
+                              ScreenshotClassificationRepository screenshotRepository) {
         this.analysisService = analysisService;
         this.jobStore = jobStore;
         this.pushSender = pushSender;
@@ -58,22 +65,37 @@ public class AnalysisJobService {
         this.properties = properties;
         this.analysisExecutor = analysisExecutor;
         this.jsonMapper = jsonMapper.getIfAvailable(() -> JsonMapper.builder().build());
+        this.screenshotRepository = screenshotRepository;
     }
 
     /** POST /captures/{id}/analysis */
+    @Transactional
     public AnalysisJobResponse request(Long userId, Long captureId, MultipartFile image) {
-        // TODO(A 파트 머지 후): captureId 가 내 캡처인지, 실천(좌 스와이프)으로 분류된 캡처인지 확인
+        var capture = screenshotRepository.findOwnedForUpdate(captureId, userId)
+                .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
+        if (capture.getClassification() != Classification.PRACTICE) {
+            throw new CustomException(GlobalErrorCode.INVALID_STATE_TRANSITION);
+        }
         byte[] bytes = analysisService.readImage(image);
         ScreenshotAnalysis analysis = jobStore.createOrReset(userId, captureId, properties.dailyLimit());
         Long jobId = analysis.getId();
 
-        try {
-            analysisExecutor.execute(() -> run(jobId, userId, captureId, bytes));
-        } catch (TaskRejectedException e) {
-            log.error("분석 대기열이 가득 참 jobId={}", jobId);
-            jobStore.fail(jobId, GlobalErrorCode.RATE_LIMITED.getCode(), "잠시 후 다시 시도해 주세요");
-            throw new CustomException(GlobalErrorCode.RATE_LIMITED);
-        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    analysisExecutor.execute(() -> run(jobId, userId, captureId, bytes));
+                } catch (TaskRejectedException e) {
+                    log.error("분석 대기열이 가득 참 jobId={}", jobId);
+                    // afterCommit에서 새 트랜잭션이 필요하므로 작업 스레드에 실패 처리를 위임한다.
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        if (jobStore.fail(jobId, GlobalErrorCode.RATE_LIMITED.getCode(), "잠시 후 다시 시도해 주세요")) {
+                            pushSender.sendAnalysisDone(userId, captureId, jobId, AnalysisStatus.FAILED);
+                        }
+                    });
+                }
+            }
+        });
         return new AnalysisJobResponse(jobId, captureId, AnalysisStatus.PENDING, POLL_AFTER_MS);
     }
 
