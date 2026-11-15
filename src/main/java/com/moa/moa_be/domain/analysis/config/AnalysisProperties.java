@@ -7,7 +7,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * API 키는 환경변수(GOOGLE_VISION_API_KEY, OPENAI_API_KEY)로 주입.
  */
 @ConfigurationProperties(prefix = "analysis")
-public record AnalysisProperties(Vision vision, OpenAi openai) {
+public record AnalysisProperties(Vision vision, OpenAi openai, Integer dailyLimit) {
+
+    public AnalysisProperties {
+        if (dailyLimit == null || dailyLimit <= 0) {
+            dailyLimit = 50; // 사용자 1명당 하루 분석 상한
+        }
+    }
 
     public record Vision(String apiKey, String baseUrl) {
         public Vision {

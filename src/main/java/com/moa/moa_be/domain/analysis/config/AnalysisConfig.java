@@ -15,7 +15,7 @@ public class AnalysisConfig {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration OCR_READ_TIMEOUT = Duration.ofSeconds(30);
-    private static final Duration LLM_READ_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration LLM_READ_TIMEOUT = Duration.ofSeconds(45);
 
     @Bean
     public RestClient visionRestClient(AnalysisProperties properties) {

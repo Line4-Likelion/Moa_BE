@@ -40,3 +40,4 @@ analysis:
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-4.1-mini}
+  daily-limit: ${ANALYSIS_DAILY_LIMIT:50}   # 사용자 1명당 하루 분석 상한

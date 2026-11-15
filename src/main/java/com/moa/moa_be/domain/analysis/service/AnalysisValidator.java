@@ -36,6 +36,13 @@ public class AnalysisValidator {
     static final int MAX_CHECKLIST_SIZE = 5;
     static final int MAX_FACTS = 6;
     static final int MAX_NULL_FACTS = 2;
+    /** 게시물 메타 정보(게시일·조회수 등)는 실천 정보가 아님 */
+    private static final java.util.regex.Pattern META_LABEL =
+            java.util.regex.Pattern.compile("(게시|작성|업로드|조회|좋아요|리트윗|댓글|팔로)");
+    /** 경로 없이 플랫폼 도메인만 있는 링크는 앱 UI 표시라서 버림 (예: "X.com") */
+    private static final java.util.Set<String> PLATFORM_DOMAINS = java.util.Set.of(
+            "x.com", "twitter.com", "instagram.com", "www.instagram.com", "youtube.com", "www.youtube.com",
+            "threads.net", "www.threads.net", "facebook.com", "www.facebook.com", "tiktok.com", "www.tiktok.com");
     /** 원·₩·$ 등 화폐 표시 (좋아요 수 같은 숫자를 가격으로 착각하는 것 방지) */
     private static final java.util.regex.Pattern CURRENCY =
             java.util.regex.Pattern.compile("(원|₩|\\$|￦|krw|won|달러|만원|천원|usd|€|¥|엔)", java.util.regex.Pattern.CASE_INSENSITIVE);
@@ -160,6 +167,9 @@ public class AnalysisValidator {
             if (raw == null || blankToNull(raw.key()) == null || !seenKeys.add(raw.key().trim())) {
                 continue;
             }
+            if (raw.label() != null && META_LABEL.matcher(raw.label()).find()) {
+                continue; // 게시일·조회수 같은 SNS 메타 정보
+            }
             String value = blankToNull(raw.value());
             double[] box = null;
 
@@ -203,6 +213,7 @@ public class AnalysisValidator {
         }
         List<String> links = cleanList(raw.links()).stream()
                 .filter(link -> ocrText.contains(normalizeUrl(link)))
+                .filter(link -> !PLATFORM_DOMAINS.contains(normalizeUrl(link)))
                 .toList();
         String title = blankToNull(raw.title()) == null ? "실천 가이드" : raw.title().trim();
         return new AnalysisResult.Guide(title, lines, cleanList(raw.preparations()), links);

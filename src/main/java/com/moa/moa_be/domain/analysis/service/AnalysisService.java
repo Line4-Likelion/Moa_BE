@@ -15,6 +15,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Consumer;
+import com.moa.moa_be.domain.analysis.entity.AnalysisStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,12 +53,19 @@ public class AnalysisService {
     }
 
     public AnalysisRun analyze(Long userId, byte[] image) {
+        return analyze(userId, image, step -> { });
+    }
+
+    /** @param onStep 단계가 바뀔 때마다 호출 (비동기 작업의 step 표시용) */
+    public AnalysisRun analyze(Long userId, byte[] image, Consumer<AnalysisStep> onStep) {
         long start = System.currentTimeMillis();
         try {
+            onStep.accept(AnalysisStep.OCR);
             OcrResult ocr = ocrClient.read(image);
             // 글자가 거의 없는 사진(옷·화장품·음식 사진 등)은 이미지도 같이 보냄
             ImageInput imageInput = needsImage(ocr) ? ImageInput.of(image) : null;
             List<String> categories = categoryService.getCategoryNames(userId);
+            onStep.accept(AnalysisStep.CATEGORIZE);
             LlmAnalysis raw = callLlm(ocr, categories, imageInput);
             AnalysisResult result = validator.validate(raw, ocr, categories, imageInput != null);
 
@@ -89,7 +98,7 @@ public class AnalysisService {
         throw last;
     }
 
-    private byte[] readImage(MultipartFile image) {
+    public byte[] readImage(MultipartFile image) {
         if (image == null || image.isEmpty()) {
             throw new CustomException(GlobalErrorCode.VALIDATION_ERROR);
         }
