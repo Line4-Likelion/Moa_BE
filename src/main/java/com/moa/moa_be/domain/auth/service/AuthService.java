@@ -1,6 +1,7 @@
 package com.moa.moa_be.domain.auth.service;
 
 import com.moa.moa_be.domain.auth.dto.AuthResponse;
+import com.moa.moa_be.domain.category.service.CategoryService;
 import com.moa.moa_be.domain.auth.dto.LoginRequest;
 import com.moa.moa_be.domain.auth.jwt.JwtTokenProvider;
 import com.moa.moa_be.global.exception.CustomException;
@@ -22,6 +23,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CategoryService categoryService;
 
     // 회원가입
     @Transactional
@@ -37,6 +39,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        categoryService.createDefaultCategories(savedUser.getId());
 
         String accessToken = jwtTokenProvider.createAccessToken(savedUser.getId(), savedUser.getEmail(), "USER");
         String refreshToken = jwtTokenProvider.createRefreshToken(savedUser.getId(), savedUser.getEmail(), "USER");
