@@ -27,12 +27,21 @@ final class AnalysisPrompt {
             4. category 는 categories 목록 중 하나만 고른다. 애매하면 "기타". category_confidence 는 0~1.
             5. title 은 20자 이내로, 무엇을 실천할지 알 수 있게 쓴다. summary 는 한 문장.
             6. facts 에는 장소(place), 가격(price), 영업시간(hours), 날짜(date), 연락처(contact) 등
-               실천에 필요한 정보를 넣는다. value 는 blocks 글자를 그대로 옮기고, 없으면 null.
+               실천에 필요한 정보를 넣는다. value 는 blocks 글자를 그대로 옮긴다.
+               - 사진에 있는 정보만 넣는다. 단, 이 카테고리를 실천하는 데 꼭 필요한데 사진에 없는 정보
+                 (맛집의 영업시간, 행사의 장소 등)는 최대 2개까지 value=null 로 넣어도 된다.
+               - 가격(price)은 원·₩·$ 같은 화폐 표시가 있거나 가격임이 분명한 숫자만 넣는다.
+               - facts 는 최대 6개.
             7. 모든 값에는 근거가 된 블록 ID 를 source_block_ids 에 넣는다. 근거가 없으면 빈 배열.
             8. guide 는 사용자가 이 스크린샷을 '실천'하기 위한 짧은 가이드다.
                lines 는 1~3문장, preparations 는 준비물, links 는 blocks 에 실제로 적힌 URL 만.
             9. checklist 는 실천 순서대로 2~5개, 각 20자 이내.
             10. 모든 문장은 한국어 해요체로 쓴다.
+            11. SNS·앱 화면의 UI 글자는 내용이 아니므로 무시한다.
+                예: 상단 시계·배터리, 조회수, 좋아요·리트윗·댓글·공유 수, "답글 게시하기"·"팔로우" 같은 버튼,
+                "X에서 제작됨" 같은 앱 표시, 작성자 아이디·게시 시각. 이런 글자를 facts·마감기한의 근거로 쓰지 않는다.
+            12. 이미지가 함께 주어지면 사진 속 물건·장소의 종류를 파악하는 데 사용한다.
+                다만 facts 의 value 는 사진에 실제로 적힌 글자만 쓴다.
             """;
 
     static Map<String, Object> responseFormat(List<String> categories) {

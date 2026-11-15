@@ -6,6 +6,7 @@ import com.moa.moa_be.domain.analysis.config.AnalysisProperties;
 import com.moa.moa_be.domain.analysis.ocr.OcrResult;
 import com.moa.moa_be.domain.analysis.service.AnalysisException;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class OpenAiAnalysisClient implements AnalysisClient {
     }
 
     @Override
-    public LlmAnalysis analyze(OcrResult ocr, List<String> categories, LocalDate today) {
+    public LlmAnalysis analyze(OcrResult ocr, List<String> categories, LocalDate today, ImageInput image) {
         Map<String, Object> userInput = new LinkedHashMap<>();
         userInput.put("today", today.toString());
         userInput.put("categories", categories);
@@ -51,7 +52,7 @@ public class OpenAiAnalysisClient implements AnalysisClient {
         request.put("model", properties.openai().model());
         request.put("messages", List.of(
                 Map.of("role", "system", "content", AnalysisPrompt.SYSTEM),
-                Map.of("role", "user", "content", jsonMapper.writeValueAsString(userInput))
+                Map.of("role", "user", "content", userContent(jsonMapper.writeValueAsString(userInput), image))
         ));
         request.put("response_format", AnalysisPrompt.responseFormat(categories));
 
@@ -85,6 +86,20 @@ public class OpenAiAnalysisClient implements AnalysisClient {
             log.warn("LLM 응답 JSON 파싱 실패: {}", message.content());
             throw new AnalysisException("LLM 응답이 JSON 형식이 아님", e);
         }
+    }
+
+    /** 텍스트만 보내거나, 이미지가 있으면 [텍스트, 이미지] 배열로 보냄 */
+    private Object userContent(String text, ImageInput image) {
+        if (image == null) {
+            return text;
+        }
+        String dataUrl = "data:" + image.mimeType() + ";base64,"
+                + Base64.getEncoder().encodeToString(image.bytes());
+        return List.of(
+                Map.of("type", "text", "text", text),
+                // detail=low: 저해상도로 보내서 토큰·비용 절약 (물건 종류 파악용이라 충분)
+                Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "low"))
+        );
     }
 
     // ---- OpenAI 응답 형식 (필요한 필드만) ----

@@ -2,6 +2,7 @@ package com.moa.moa_be.domain.analysis.service;
 
 import com.moa.moa_be.domain.analysis.dto.AnalysisResult;
 import com.moa.moa_be.domain.analysis.llm.AnalysisClient;
+import com.moa.moa_be.domain.analysis.llm.ImageInput;
 import com.moa.moa_be.domain.analysis.llm.LlmAnalysis;
 import com.moa.moa_be.domain.analysis.ocr.OcrClient;
 import com.moa.moa_be.domain.analysis.ocr.OcrResult;
@@ -33,6 +34,8 @@ public class AnalysisService {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final int LLM_MAX_ATTEMPTS = 2; // JSON 이 아니면 한 번 다시 요청
+    /** OCR 글자(공백 제외)가 이보다 적으면 이미지도 같이 LLM 에 보냄 */
+    static final int MIN_OCR_CHARS_FOR_TEXT_ONLY = 20;
 
     private final OcrClient ocrClient;
     private final AnalysisClient analysisClient;
@@ -40,7 +43,7 @@ public class AnalysisService {
     private final CategoryService categoryService;
 
     /** 분석 1회 결과 (개발용 API 에서 OCR 원문도 같이 보여주려고 묶음) */
-    public record AnalysisRun(OcrResult ocr, AnalysisResult result, long elapsedMs) {
+    public record AnalysisRun(OcrResult ocr, AnalysisResult result, boolean imageSent, long elapsedMs) {
     }
 
     public AnalysisRun analyze(Long userId, MultipartFile image) {
@@ -51,27 +54,33 @@ public class AnalysisService {
         long start = System.currentTimeMillis();
         try {
             OcrResult ocr = ocrClient.read(image);
-            // TODO: 글자가 거의 없는 사진(옷·화장품 사진 등)은 이미지를 같이 LLM 에 보내는 방식 추가
+            // 글자가 거의 없는 사진(옷·화장품·음식 사진 등)은 이미지도 같이 보냄
+            ImageInput imageInput = needsImage(ocr) ? ImageInput.of(image) : null;
             List<String> categories = categoryService.getCategoryNames(userId);
-            LlmAnalysis raw = callLlm(ocr, categories);
-            AnalysisResult result = validator.validate(raw, ocr, categories);
+            LlmAnalysis raw = callLlm(ocr, categories, imageInput);
+            AnalysisResult result = validator.validate(raw, ocr, categories, imageInput != null);
 
             long elapsed = System.currentTimeMillis() - start;
-            log.info("분석 완료 userId={} blocks={} category={} deadline={} {}ms",
-                    userId, ocr.blocks().size(), result.category(), result.deadline().status(), elapsed);
-            return new AnalysisRun(ocr, result, elapsed);
+            log.info("분석 완료 userId={} blocks={} image={} category={} deadline={} {}ms",
+                    userId, ocr.blocks().size(), imageInput != null, result.category(),
+                    result.deadline().status(), elapsed);
+            return new AnalysisRun(ocr, result, imageInput != null, elapsed);
         } catch (AnalysisException e) {
             log.error("분석 실패 userId={}: {}", userId, e.getMessage());
             throw new CustomException(GlobalErrorCode.ANALYSIS_FAILED);
         }
     }
 
-    private LlmAnalysis callLlm(OcrResult ocr, List<String> categories) {
+    private boolean needsImage(OcrResult ocr) {
+        return ocr.fullText().replaceAll("\\s+", "").length() < MIN_OCR_CHARS_FOR_TEXT_ONLY;
+    }
+
+    private LlmAnalysis callLlm(OcrResult ocr, List<String> categories, ImageInput image) {
         LocalDate today = LocalDate.now(KST);
         AnalysisException last = null;
         for (int attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
             try {
-                return analysisClient.analyze(ocr, categories, today);
+                return analysisClient.analyze(ocr, categories, today, image);
             } catch (AnalysisException e) {
                 last = e;
                 log.warn("LLM 분석 실패 ({}/{}): {}", attempt, LLM_MAX_ATTEMPTS, e.getMessage());

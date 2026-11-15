@@ -10,5 +10,8 @@ import java.util.List;
  */
 public interface AnalysisClient {
 
-    LlmAnalysis analyze(OcrResult ocr, List<String> categories, LocalDate today);
+    /**
+     * @param image 글자가 적은 사진이면 원본 이미지, 아니면 null (텍스트만 전송)
+     */
+    LlmAnalysis analyze(OcrResult ocr, List<String> categories, LocalDate today, ImageInput image);
 }

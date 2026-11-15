@@ -34,9 +34,21 @@ public class AnalysisValidator {
     static final double MIN_CATEGORY_CONFIDENCE = 0.6;
     static final int MAX_TITLE_LENGTH = 20;
     static final int MAX_CHECKLIST_SIZE = 5;
+    static final int MAX_FACTS = 6;
+    static final int MAX_NULL_FACTS = 2;
+    /** 원·₩·$ 등 화폐 표시 (좋아요 수 같은 숫자를 가격으로 착각하는 것 방지) */
+    private static final java.util.regex.Pattern CURRENCY =
+            java.util.regex.Pattern.compile("(원|₩|\\$|￦|krw|won|달러|만원|천원|usd|€|¥|엔)", java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final String OTHER = DefaultCategory.OTHER.getDisplayName();
 
     public AnalysisResult validate(LlmAnalysis raw, OcrResult ocr, List<String> categories) {
+        return validate(raw, ocr, categories, false);
+    }
+
+    /**
+     * @param imageSent 이미지도 함께 보냈는지. 이때도 facts 값은 OCR 글자 기준으로 검증한다.
+     */
+    public AnalysisResult validate(LlmAnalysis raw, OcrResult ocr, List<String> categories, boolean imageSent) {
         Map<String, OcrResult.Block> blocks = ocr.blocks().stream()
                 .collect(Collectors.toMap(OcrResult.Block::id, Function.identity(), (a, b) -> a));
         String ocrText = normalize(ocr.fullText());
@@ -139,8 +151,13 @@ public class AnalysisValidator {
             return List.of();
         }
         List<AnalysisResult.Fact> facts = new ArrayList<>();
+        java.util.Set<String> seenKeys = new java.util.HashSet<>();
+        int nullCount = 0;
         for (LlmAnalysis.Fact raw : rawFacts) {
-            if (raw == null || blankToNull(raw.key()) == null) {
+            if (facts.size() >= MAX_FACTS) {
+                break;
+            }
+            if (raw == null || blankToNull(raw.key()) == null || !seenKeys.add(raw.key().trim())) {
                 continue;
             }
             String value = blankToNull(raw.value());
@@ -155,6 +172,17 @@ public class AnalysisValidator {
                     value = null; // 사진 어디에도 없는 값 → 지어낸 값
                 }
                 // 근거 블록 ID 만 틀리고 글자는 사진에 있으면 값은 살리고 box 만 비움
+
+                if (value != null && "price".equalsIgnoreCase(raw.key().trim())
+                        && !CURRENCY.matcher(value).find()) {
+                    continue; // 화폐 표시 없는 숫자 (좋아요·조회수 등)는 가격으로 잘못 읽은 것 → 항목 제외
+                }
+            }
+            if (value == null) {
+                if (nullCount >= MAX_NULL_FACTS) {
+                    continue; // "직접 확인 필요" 항목은 최대 2개까지만
+                }
+                nullCount++;
             }
             facts.add(new AnalysisResult.Fact(raw.key().trim(),
                     blankToNull(raw.label()) == null ? raw.key().trim() : raw.label().trim(),
