@@ -63,6 +63,7 @@ public class AnalysisValidator {
         String category = validCategory(raw.category(), raw.categoryConfidence(), categories);
         double confidence = raw.categoryConfidence() == null ? 0 : clamp(raw.categoryConfidence());
 
+
         return new AnalysisResult(
                 validDeadline(raw.deadline(), blocks),
                 category,
@@ -71,8 +72,30 @@ public class AnalysisValidator {
                 blankToNull(raw.summary()),
                 validFacts(raw.facts(), blocks, ocrText),
                 validGuide(raw.guide(), ocrText),
-                validChecklist(raw.checklist())
+                validChecklist(raw.checklist()),
+                validPlace(raw.place())
         );
+
+    }
+
+
+    private AnalysisResult.Place validPlace(LlmAnalysis.Place raw) {
+        if (raw == null) {
+            return null;
+        }
+
+        String name = blankToNull(raw.name());
+        String address = blankToNull(raw.address());
+
+        if (name == null && address == null) {
+            return null;
+        }
+
+        if (address == null) {
+            return null;
+        }
+
+        return new AnalysisResult.Place(name, address);
     }
 
     // ---- category ----

@@ -56,15 +56,31 @@ public class AnalysisJobStore {
 
     /** @return 저장했으면 true (이미 타임아웃 처리된 작업이면 false) */
     @Transactional
-    public boolean succeed(Long analysisId, AnalysisResult result, Long categoryId, String resultJson) {
+    public boolean succeed(Long analysisId, AnalysisResult result, Long categoryId,
+                           String resultJson, String placeName, String placeAddress,
+                           Double latitude, Double longitude) {
         ScreenshotAnalysis analysis = repository.findById(analysisId).orElse(null);
+
         if (analysis == null || !analysis.getStatus().isInProgress()) {
             return false;
         }
-        analysis.succeed(result.deadline().status(), result.deadline().date(), categoryId,
-                result.title(), result.guide() != null, resultJson);
+
+        analysis.succeed(
+                result.deadline().status(),
+                result.deadline().date(),
+                categoryId,
+                result.title(),
+                result.guide() != null,
+                resultJson,
+                placeName,
+                placeAddress,
+                latitude,
+                longitude
+        );
+
         return true;
     }
+
 
     @Transactional
     public boolean fail(Long analysisId, String errorCode, String errorMessage) {
