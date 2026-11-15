@@ -3,19 +3,14 @@ package com.moa.moa_be.domain.capture.controller;
 import com.moa.moa_be.domain.capture.dto.CaptureActionRequest;
 import com.moa.moa_be.domain.capture.dto.CaptureActionResponse;
 import com.moa.moa_be.domain.capture.dto.CaptureDetailResponse;
-import com.moa.moa_be.domain.capture.dto.CaptureItemsResponse;
 import com.moa.moa_be.domain.capture.dto.CaptureListResponse;
-import com.moa.moa_be.domain.capture.dto.CaptureSummaryResponse;
 import com.moa.moa_be.domain.capture.dto.ChecklistCheckRequest;
 import com.moa.moa_be.domain.capture.dto.ChecklistCheckResponse;
 import com.moa.moa_be.domain.capture.dto.FactsUpdateRequest;
-import com.moa.moa_be.domain.capture.dto.FolderBulkMoveRequest;
-import com.moa.moa_be.domain.capture.dto.FolderMoveRequest;
 import com.moa.moa_be.domain.capture.service.CaptureActionService;
 import com.moa.moa_be.domain.capture.service.CaptureService;
 import com.moa.moa_be.domain.capture.service.ChecklistService;
 import com.moa.moa_be.domain.capture.service.FactService;
-import com.moa.moa_be.domain.capture.service.FolderService;
 import com.moa.moa_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,7 +41,6 @@ public class CaptureController {
     private final CaptureActionService actionService;
     private final ChecklistService checklistService;
     private final FactService factService;
-    private final FolderService folderService;
 
     @Operation(summary = "캡처 목록 (실천 목록·완료함·참고함)",
             description = "status=TODO 실천 목록(기본 정렬 deadline), DONE 완료함·REFERENCE 참고함(기본 정렬 recent). "
@@ -61,13 +55,11 @@ public class CaptureController {
             @Parameter(description = "deadline | recent") @RequestParam(required = false) String sort,
             @RequestParam(required = false) String cursor,
             @Parameter(description = "기본 20, 최대 100") @RequestParam(required = false) Integer limit,
-            @Parameter(description = "참고함 폴더 id, none 이면 폴더 없는 항목만")
-            @RequestParam(name = "folder_id", required = false) String folderId,
             @Parameter(description = "그날 완료한 항목 (YYYY-MM-DD)")
             @RequestParam(name = "completed_on", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate completedOn) {
         return BaseResponse.success(
-                captureService.list(userId, status, snoozed, sort, cursor, limit, folderId, completedOn));
+                captureService.list(userId, status, snoozed, sort, cursor, limit, completedOn));
     }
 
     @Operation(summary = "캡처 상세 (C-01~C-06)", description = "원본 사진은 서버에 없으므로 file_key 만 내려갑니다.")
@@ -102,20 +94,6 @@ public class CaptureController {
         return BaseResponse.success(factService.update(userId, id, request));
     }
 
-    @Operation(summary = "참고 항목 폴더 이동", description = "folder_id 가 null 이면 폴더에서 빼기")
-    @PatchMapping("/{id}/folder")
-    public BaseResponse<CaptureSummaryResponse> moveToFolder(@AuthenticationPrincipal Long userId,
-                                                             @PathVariable Long id,
-                                                             @RequestBody FolderMoveRequest request) {
-        return BaseResponse.success(folderService.move(userId, id, request.folderId()));
-    }
-
-    @Operation(summary = "참고 항목 여러 장 폴더 이동", description = "한 번에 최대 100장")
-    @PatchMapping("/folder")
-    public BaseResponse<CaptureItemsResponse> moveAllToFolder(@AuthenticationPrincipal Long userId,
-                                                              @Valid @RequestBody FolderBulkMoveRequest request) {
-        return BaseResponse.success(folderService.moveAll(userId, request.captureIds(), request.folderId()));
-    }
 
     @Operation(summary = "캡처 삭제", description = "앱이 기기에서 이미지 삭제에 성공한 뒤 호출. 서버 기록 삭제, 204")
     @DeleteMapping("/{id}")

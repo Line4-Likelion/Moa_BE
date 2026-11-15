@@ -46,7 +46,7 @@ public class CaptureService {
 
     /** GET /captures */
     public CaptureListResponse list(Long userId, String status, Boolean snoozed, String sort, String cursor,
-                                    Integer limit, String folderId, LocalDate completedOn) {
+                                    Integer limit, LocalDate completedOn) {
         Map<String, String> errors = new LinkedHashMap<>();
         CaptureStatus tab = parseStatus(status, errors);
         Sort order = parseSort(sort, tab, errors);
@@ -55,8 +55,6 @@ public class CaptureService {
         if (size < 1 || size > MAX_LIMIT) {
             errors.put("limit", "1~" + MAX_LIMIT + " 사이로 입력해주세요");
         }
-        boolean folderNone = "none".equalsIgnoreCase(folderId);
-        Long folder = folderNone ? null : parseFolderId(folderId, errors);
         if (!errors.isEmpty()) {
             throw new FieldValidationException(errors);
         }
@@ -64,7 +62,7 @@ public class CaptureService {
         CaptureListCondition condition = new CaptureListCondition(tab, snoozed, CaptureTimes.today(),
                 completedOn == null ? null : CaptureTimes.startOf(completedOn),
                 completedOn == null ? null : CaptureTimes.startOf(completedOn.plusDays(1)),
-                folderNone, folder, order);
+                order);
 
         List<CaptureRow> rows = captureQueryRepository.findPage(userId, condition, offset, size + 1);
         boolean hasNext = rows.size() > size;
@@ -134,18 +132,6 @@ public class CaptureService {
         } catch (IllegalArgumentException e) {
             errors.put("sort", "deadline, recent 중 하나로 입력해주세요");
             return Sort.RECENT;
-        }
-    }
-
-    private static Long parseFolderId(String folderId, Map<String, String> errors) {
-        if (folderId == null || folderId.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.valueOf(folderId.trim());
-        } catch (NumberFormatException e) {
-            errors.put("folder_id", "폴더 id 또는 none 으로 입력해주세요");
-            return null;
         }
     }
 

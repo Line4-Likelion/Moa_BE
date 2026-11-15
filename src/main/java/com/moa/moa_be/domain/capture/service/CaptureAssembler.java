@@ -126,7 +126,7 @@ public class CaptureAssembler {
                 ? new ErrorBody(a.getErrorCode(), a.getErrorMessage()) : null;
 
         return new CaptureDetailResponse(s.id(), s.fileKey(), s.status(), s.category(), s.title(), s.summary(),
-                s.deadline(), s.checklistProgress(), s.snoozeUntil(), s.folderId(), s.dismissed(), s.takenAt(),
+                s.deadline(), s.checklistProgress(), s.snoozeUntil(), s.dismissed(), s.takenAt(),
                 s.createdAt(), s.statusChangedAt(),
                 result != null ? a.getCategorySource() : null,
                 facts, links, guide, checklist, null, error);
@@ -208,7 +208,6 @@ public class CaptureAssembler {
                 analyzed ? deadline(a, result) : null,
                 analyzed ? progress(result, checked) : null,
                 c.getSnoozeUntil(),
-                c.getFolderId(),
                 c.isDismissed(),
                 null,
                 toKst(c.getClassifiedAt()),

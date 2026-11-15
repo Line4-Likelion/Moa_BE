@@ -19,7 +19,6 @@ public record CaptureDetailResponse(
         CaptureParts.DeadlineInfo deadline,
         @JsonProperty("checklist_progress") CaptureParts.Progress checklistProgress,
         @JsonProperty("snooze_until") LocalDate snoozeUntil,
-        @JsonProperty("folder_id") Long folderId,
         boolean dismissed,
         @JsonProperty("taken_at") OffsetDateTime takenAt,
         @JsonProperty("created_at") OffsetDateTime createdAt,

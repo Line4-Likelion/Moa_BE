@@ -96,32 +96,6 @@ public class CaptureQueryRepository {
                 .toList();
     }
 
-    /** 폴더별 참고함 항목 수 [folderId → count] */
-    public Map<Long, Long> countReferenceByFolder(Long userId) {
-        List<Object[]> rows = em.createQuery("""
-                        select c.folderId, count(c) from ScreenshotClassification c
-                        where c.user.id = :userId and c.classification = :reference and c.folderId is not null
-                        group by c.folderId
-                        """, Object[].class)
-                .setParameter("userId", userId)
-                .setParameter("reference", Classification.REFERENCE)
-                .getResultList();
-        Map<Long, Long> counts = new HashMap<>();
-        rows.forEach(r -> counts.put((Long) r[0], (Long) r[1]));
-        return counts;
-    }
-
-    /** 폴더 삭제 시 안의 항목을 "폴더 없음"으로 */
-    public int clearFolder(Long userId, Long folderId) {
-        return em.createQuery("""
-                        update ScreenshotClassification c set c.folderId = null
-                        where c.user.id = :userId and c.folderId = :folderId
-                        """)
-                .setParameter("userId", userId)
-                .setParameter("folderId", folderId)
-                .executeUpdate();
-    }
-
     /** 안함(DISMISS) 후 되돌리기 시간이 지났는데 아직 분석 결과가 남아 있는 캡처 id */
     public List<Long> findDismissedWithAnalysis(Instant dismissedBefore) {
         return em.createQuery("""
@@ -146,12 +120,6 @@ public class CaptureQueryRepository {
             sb.append(" and c.completedAt >= :completedFrom and c.completedAt < :completedTo");
             params.put("completedFrom", condition.completedFrom());
             params.put("completedTo", condition.completedTo());
-        }
-        if (condition.folderNone()) {
-            sb.append(" and c.folderId is null");
-        } else if (condition.folderId() != null) {
-            sb.append(" and c.folderId = :folderId");
-            params.put("folderId", condition.folderId());
         }
         return sb.toString();
     }

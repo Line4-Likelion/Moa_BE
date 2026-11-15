@@ -17,7 +17,6 @@ public record CaptureSummaryResponse(
         CaptureParts.DeadlineInfo deadline,
         @JsonProperty("checklist_progress") CaptureParts.Progress checklistProgress,
         @JsonProperty("snooze_until") @Schema(description = "보류 기한. 오늘 이후면 보류 중") LocalDate snoozeUntil,
-        @JsonProperty("folder_id") Long folderId,
         @Schema(description = "안함으로 참고함에 온 항목") boolean dismissed,
         @JsonProperty("taken_at") @Schema(description = "촬영 시각 (서버에 아직 저장하지 않아 null)") OffsetDateTime takenAt,
         @JsonProperty("created_at") OffsetDateTime createdAt,

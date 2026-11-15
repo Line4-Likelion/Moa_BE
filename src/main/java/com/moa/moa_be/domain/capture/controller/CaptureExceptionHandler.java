@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {CaptureController.class, FolderController.class, StatsController.class})
+@RestControllerAdvice(assignableTypes = {CaptureController.class, StatsController.class})
 public class CaptureExceptionHandler {
 
     static final String MESSAGE = "입력값을 확인해주세요";

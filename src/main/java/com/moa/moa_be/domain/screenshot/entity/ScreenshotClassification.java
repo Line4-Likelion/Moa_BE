@@ -52,10 +52,6 @@ public class ScreenshotClassification {
     @Column(name = "status_changed_at")
     private Instant statusChangedAt;
 
-    /** 참고함 폴더 */
-    @Column(name = "folder_id")
-    private Long folderId;
-
     public ScreenshotClassification(User user, String fileKey, Classification classification) {
         this.user = user;
         this.fileKey = fileKey;
@@ -100,10 +96,6 @@ public class ScreenshotClassification {
     public void reopen(Instant now) {
         this.completedAt = null;
         this.statusChangedAt = now;
-    }
-
-    public void moveToFolder(Long folderId) {
-        this.folderId = folderId;
     }
 
     /** 되돌리기(C-11)용 상태 스냅샷 */

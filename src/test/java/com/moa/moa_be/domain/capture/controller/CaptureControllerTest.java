@@ -37,7 +37,6 @@ import com.moa.moa_be.domain.capture.service.CaptureActionService;
 import com.moa.moa_be.domain.capture.service.CaptureService;
 import com.moa.moa_be.domain.capture.service.ChecklistService;
 import com.moa.moa_be.domain.capture.service.FactService;
-import com.moa.moa_be.domain.capture.service.FolderService;
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
 import com.moa.moa_be.global.exception.GlobalExceptionHandler;
@@ -72,7 +71,7 @@ class CaptureControllerTest {
         checklistService = mock(ChecklistService.class);
         factService = mock(FactService.class);
         CaptureController controller = new CaptureController(captureService, actionService, checklistService,
-                factService, mock(FolderService.class));
+                factService);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new CaptureExceptionHandler(), new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -113,8 +112,8 @@ class CaptureControllerTest {
 
     @Test
     void listHasNextCursorAndFacets() throws Exception {
-        when(captureService.list(eq(1L), eq("TODO"), eq(true), eq("deadline"), isNull(), isNull(), isNull(),
-                isNull())).thenReturn(new CaptureListResponse(List.of(summary()), "bzoyMA",
+        when(captureService.list(eq(1L), eq("TODO"), eq(true), eq("deadline"), isNull(), isNull(), isNull()))
+                .thenReturn(new CaptureListResponse(List.of(summary()), "bzoyMA",
                 new CaptureListResponse.Facets(1, 3)));
 
         mvc.perform(get("/captures").param("status", "TODO").param("snoozed", "true").param("sort", "deadline"))
@@ -127,10 +126,10 @@ class CaptureControllerTest {
 
     @Test
     void referenceListHasNoFacets() throws Exception {
-        when(captureService.list(eq(1L), eq("REFERENCE"), isNull(), isNull(), isNull(), isNull(), eq("none"),
-                isNull())).thenReturn(new CaptureListResponse(List.of(), null, null));
+        when(captureService.list(eq(1L), eq("REFERENCE"), isNull(), isNull(), isNull(), isNull(), isNull()))
+                .thenReturn(new CaptureListResponse(List.of(), null, null));
 
-        mvc.perform(get("/captures").param("status", "REFERENCE").param("folder_id", "none"))
+        mvc.perform(get("/captures").param("status", "REFERENCE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items").isEmpty())
                 .andExpect(jsonPath("$.data.facets").doesNotExist());
@@ -217,7 +216,7 @@ class CaptureControllerTest {
 
     private static CaptureSummaryResponse summary() {
         return new CaptureSummaryResponse(12L, "media:1", CaptureStatus.TODO, null, "연남 소바실", null, null, null,
-                LocalDate.of(2026, 11, 20), null, false, null, AT, AT);
+                LocalDate.of(2026, 11, 20), false, null, AT, AT);
     }
 
     private static CaptureDetailResponse detail() {
@@ -225,7 +224,7 @@ class CaptureControllerTest {
                 new CategoryInfo(3L, "맛집", false, 2), "연남 소바실", "가을 한정 소바",
                 new DeadlineInfo(DeadlineStatus.FOUND, LocalDate.of(2026, 11, 30), "11/30까지",
                         new double[]{0.1, 0.2, 0.3, 0.05}),
-                new Progress(1, 2), null, null, false, null, AT, AT, CategorySource.AI,
+                new Progress(1, 2), null, false, null, AT, AT, CategorySource.AI,
                 List.of(new FactItem("price", "가격", null, null, false)),
                 List.of(new LinkItem(LinkType.MAP, "naver.me", "https://naver.me/x")),
                 new GuideInfo("방문하기", List.of("예약"), List.of()),

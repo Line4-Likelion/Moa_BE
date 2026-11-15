@@ -10,8 +10,6 @@ import java.time.LocalDate;
  * @param snoozed       null 이면 전체, true 면 보류 중만, false 면 보류 아닌 것만
  * @param completedFrom completed_on 필터 시작 (포함), null 이면 필터 없음
  * @param completedTo   completed_on 필터 끝 (미포함)
- * @param folderNone    true 면 폴더 없는 항목만 (folder_id=none)
- * @param folderId      폴더 필터 (folderNone 이 아니고 null 이면 필터 없음)
  */
 public record CaptureListCondition(
         CaptureStatus status,
@@ -19,8 +17,6 @@ public record CaptureListCondition(
         LocalDate today,
         Instant completedFrom,
         Instant completedTo,
-        boolean folderNone,
-        Long folderId,
         Sort sort
 ) {
 
@@ -33,10 +29,10 @@ public record CaptureListCondition(
 
     /** facets 집계용: 탭(status)만 남기고 다른 필터는 뺀 조건 */
     public CaptureListCondition tabOnly() {
-        return new CaptureListCondition(status, null, today, null, null, false, null, sort);
+        return new CaptureListCondition(status, null, today, null, null, sort);
     }
 
     public CaptureListCondition withSnoozed(Boolean snoozed) {
-        return new CaptureListCondition(status, snoozed, today, completedFrom, completedTo, folderNone, folderId, sort);
+        return new CaptureListCondition(status, snoozed, today, completedFrom, completedTo, sort);
     }
 }
