@@ -6,6 +6,7 @@ import com.moa.moa_be.domain.analysis.dto.AnalysisJobStatusResponse;
 import com.moa.moa_be.domain.analysis.dto.AnalysisResult;
 import com.moa.moa_be.domain.analysis.dto.CaptureAnalysisResponse;
 import com.moa.moa_be.domain.analysis.entity.AnalysisStatus;
+import com.moa.moa_be.domain.analysis.entity.CategorySource;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
 import com.moa.moa_be.domain.category.entity.Category;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
@@ -144,9 +145,20 @@ public class AnalysisJobService {
         return toResponse(userId, jobStore.getMine(userId, captureId));
     }
 
-    /** PATCH /captures/{id}/category (B-4) */
+    /**
+     * PATCH /captures/{id}/category (B-4). 실천 사진은 분석 결과의 카테고리를,
+     * 참고 사진(분석 없음)은 캡처의 참고함 카테고리를 바꾼다 (C 파트 참고함 칩).
+     */
+    @Transactional
     public CaptureAnalysisResponse changeCategory(Long userId, Long captureId, Long categoryId) {
-        categoryService.getMyCategory(userId, categoryId); // 내 카테고리가 아니면 404
+        Category category = categoryService.getMyCategory(userId, categoryId); // 내 카테고리가 아니면 404
+        var capture = screenshotRepository.findOwnedForUpdate(captureId, userId).orElse(null);
+        if (capture != null && capture.getClassification() == Classification.REFERENCE) {
+            capture.changeReferenceCategory(categoryId);
+            return new CaptureAnalysisResponse(captureId, null, null,
+                    new CaptureAnalysisResponse.Category(category.getId(), category.getName()),
+                    CategorySource.USER, null, null);
+        }
         ScreenshotAnalysis analysis = jobStore.changeCategory(userId, captureId, categoryId);
         return toResponse(userId, analysis);
     }

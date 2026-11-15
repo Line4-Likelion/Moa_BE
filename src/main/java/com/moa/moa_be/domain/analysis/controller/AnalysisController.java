@@ -61,7 +61,9 @@ public class AnalysisController {
         return ResponseEntity.ok(BaseResponse.success(analysisJobService.getResult(userId, captureId)));
     }
 
-    @Operation(summary = "카테고리 수동 변경 (B-4)", description = "AI가 정한 카테고리를 직접 변경. categorySource 가 USER 로 바뀝니다.")
+    @Operation(summary = "카테고리 수동 변경 (B-4)",
+            description = "AI가 정한 카테고리를 직접 변경. categorySource 가 USER 로 바뀝니다. "
+                    + "참고 사진이면 참고함 카테고리를 바꾸고 jobId·status·result 는 null 입니다.")
     @PatchMapping("/captures/{id}/category")
     public ResponseEntity<BaseResponse<CaptureAnalysisResponse>> changeCategory(
             @AuthenticationPrincipal Long userId,
