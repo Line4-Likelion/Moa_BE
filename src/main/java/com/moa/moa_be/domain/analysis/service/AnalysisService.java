@@ -1,0 +1,112 @@
+package com.moa.moa_be.domain.analysis.service;
+
+import com.moa.moa_be.domain.analysis.dto.AnalysisResult;
+import com.moa.moa_be.domain.analysis.llm.AnalysisClient;
+import com.moa.moa_be.domain.analysis.llm.LlmAnalysis;
+import com.moa.moa_be.domain.analysis.ocr.OcrClient;
+import com.moa.moa_be.domain.analysis.ocr.OcrResult;
+import com.moa.moa_be.domain.category.service.CategoryService;
+import com.moa.moa_be.global.exception.CustomException;
+import com.moa.moa_be.global.exception.GlobalErrorCode;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+/**
+ * 분석 순서 (명세서 "분석 순서와 규칙"):
+ * OCR → (마감기한 판단 · 카테고리 · 실천 방법을 LLM 한 번에) → 서버 검증
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AnalysisService {
+
+    public static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
+    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int LLM_MAX_ATTEMPTS = 2; // JSON 이 아니면 한 번 다시 요청
+
+    private final OcrClient ocrClient;
+    private final AnalysisClient analysisClient;
+    private final AnalysisValidator validator;
+    private final CategoryService categoryService;
+
+    /** 분석 1회 결과 (개발용 API 에서 OCR 원문도 같이 보여주려고 묶음) */
+    public record AnalysisRun(OcrResult ocr, AnalysisResult result, long elapsedMs) {
+    }
+
+    public AnalysisRun analyze(Long userId, MultipartFile image) {
+        return analyze(userId, readImage(image));
+    }
+
+    public AnalysisRun analyze(Long userId, byte[] image) {
+        long start = System.currentTimeMillis();
+        try {
+            OcrResult ocr = ocrClient.read(image);
+            // TODO: 글자가 거의 없는 사진(옷·화장품 사진 등)은 이미지를 같이 LLM 에 보내는 방식 추가
+            List<String> categories = categoryService.getCategoryNames(userId);
+            LlmAnalysis raw = callLlm(ocr, categories);
+            AnalysisResult result = validator.validate(raw, ocr, categories);
+
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("분석 완료 userId={} blocks={} category={} deadline={} {}ms",
+                    userId, ocr.blocks().size(), result.category(), result.deadline().status(), elapsed);
+            return new AnalysisRun(ocr, result, elapsed);
+        } catch (AnalysisException e) {
+            log.error("분석 실패 userId={}: {}", userId, e.getMessage());
+            throw new CustomException(GlobalErrorCode.ANALYSIS_FAILED);
+        }
+    }
+
+    private LlmAnalysis callLlm(OcrResult ocr, List<String> categories) {
+        LocalDate today = LocalDate.now(KST);
+        AnalysisException last = null;
+        for (int attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
+            try {
+                return analysisClient.analyze(ocr, categories, today);
+            } catch (AnalysisException e) {
+                last = e;
+                log.warn("LLM 분석 실패 ({}/{}): {}", attempt, LLM_MAX_ATTEMPTS, e.getMessage());
+            }
+        }
+        throw last;
+    }
+
+    private byte[] readImage(MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            throw new CustomException(GlobalErrorCode.VALIDATION_ERROR);
+        }
+        if (image.getSize() > MAX_IMAGE_BYTES) {
+            throw new CustomException(GlobalErrorCode.IMAGE_TOO_LARGE);
+        }
+        if (!isAllowedType(image)) {
+            throw new CustomException(GlobalErrorCode.UNSUPPORTED_IMAGE);
+        }
+        try {
+            return image.getBytes();
+        } catch (IOException e) {
+            throw new CustomException(GlobalErrorCode.UNSUPPORTED_IMAGE);
+        }
+    }
+
+    private boolean isAllowedType(MultipartFile image) {
+        String contentType = image.getContentType();
+        if (contentType != null && ALLOWED_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        String name = image.getOriginalFilename();
+        if (name == null || !name.contains(".")) {
+            return false;
+        }
+        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+        return ALLOWED_EXTENSIONS.contains(ext);
+    }
+}

@@ -74,7 +74,9 @@ public class CategoryService {
     }
 
     /** AI 분석(B-2)에서 쓸 카테고리 이름 목록 */
+    @Transactional
     public List<String> getCategoryNames(Long userId) {
+        createDefaultCategories(userId);
         return categoryRepository.findAllByUserId(userId).stream()
                 .sorted(displayOrder())
                 .map(Category::getName)
