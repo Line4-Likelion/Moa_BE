@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -89,7 +90,17 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.error("RESOURCE_NOT_FOUND", "요청하신 리소스를 찾을 수 없습니다."));
     }
 
-    // 8. 예상치 못한 서버 예외
+    // 8. 업로드 파일 크기 초과 (spring.servlet.multipart.max-file-size)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    protected ResponseEntity<BaseResponse<?>> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException ex) {
+        log.warn("MaxUploadSizeExceededException 발생: {}", ex.getMessage());
+        return ResponseEntity.status(GlobalErrorCode.IMAGE_TOO_LARGE.getStatus())
+                .body(BaseResponse.error(GlobalErrorCode.IMAGE_TOO_LARGE.getCode(),
+                        GlobalErrorCode.IMAGE_TOO_LARGE.getMessage()));
+    }
+
+    // 9. 예상치 못한 서버 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<?>> handleException(Exception ex) {
         log.error("Server 오류 발생: ", ex);
