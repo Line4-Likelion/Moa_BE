@@ -6,6 +6,8 @@ import static org.mockito.Mockito.*;
 
 import com.moa.moa_be.domain.analysis.config.AnalysisProperties;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
+import com.moa.moa_be.domain.capture.repository.CaptureQueryRepository;
+import com.moa.moa_be.domain.capture.service.CaptureAssembler;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
 import com.moa.moa_be.domain.category.service.CategoryService;
 import com.moa.moa_be.domain.screenshot.entity.Classification;
@@ -40,7 +42,8 @@ class AnalysisClassificationIntegrationTest {
         @SuppressWarnings("unchecked") ObjectProvider<JsonMapper> mapper = mock(ObjectProvider.class);
         service = new AnalysisJobService(analysis, jobs, mock(AnalysisPushSender.class),
                 mock(CategoryService.class), mock(CategoryRepository.class),
-                new AnalysisProperties(null, null, 50), executor, mapper, captures);
+                new AnalysisProperties(null, null, 50), executor, mapper, captures,
+                mock(CaptureQueryRepository.class), mock(CaptureAssembler.class));
     }
 
     @Test

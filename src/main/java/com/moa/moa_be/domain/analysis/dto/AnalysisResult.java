@@ -1,5 +1,8 @@
 package com.moa.moa_be.domain.analysis.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.List;
@@ -9,9 +12,11 @@ import java.util.List;
  * box 는 [x, y, w, h] 0~1 비율, null 이면 앱에서 "원본에서 보기" 숨김.
  */
 @Schema(description = "AI 분석 결과 (검증 완료)")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record AnalysisResult(
         Deadline deadline,
         @Schema(example = "맛집") String category,
+        @JsonProperty("category_confidence") @JsonAlias("categoryConfidence") // 예전 저장분 호환
         @Schema(example = "0.86") double categoryConfidence,
         @Schema(example = "연남 소바실") String title,
         @Schema(example = "가을 한정 소바 행사") String summary,

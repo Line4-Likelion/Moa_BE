@@ -7,8 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface ScreenshotAnalysisRepository extends JpaRepository<ScreenshotAnalysis, Long> {
 
@@ -23,14 +21,6 @@ public interface ScreenshotAnalysisRepository extends JpaRepository<ScreenshotAn
     List<ScreenshotAnalysis> findAllByStatusInAndRequestedAtBefore(Collection<AnalysisStatus> statuses,
                                                                    LocalDateTime before);
 
-    /** 카테고리별 분석 완료 항목 수 [categoryId, count] */
-    @Query("""
-            select a.categoryId, count(a) from ScreenshotAnalysis a
-            where a.userId = :userId and a.status = com.moa.moa_be.domain.analysis.entity.AnalysisStatus.SUCCEEDED
-              and a.categoryId is not null
-            group by a.categoryId
-            """)
-    List<Object[]> countSucceededByCategory(@Param("userId") Long userId);
 
     void deleteAllByUserId(Long userId);
 
