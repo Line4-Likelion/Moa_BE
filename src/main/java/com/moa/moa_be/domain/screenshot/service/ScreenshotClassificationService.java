@@ -5,7 +5,7 @@ import com.moa.moa_be.domain.screenshot.dto.ClassificationResponse;
 import com.moa.moa_be.domain.screenshot.entity.Classification;
 import com.moa.moa_be.domain.screenshot.entity.ScreenshotClassification;
 import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
-import com.moa.moa_be.domain.analysis.repository.ScreenshotAnalysisRepository;
+import com.moa.moa_be.domain.analysis.service.AnalysisJobService;
 import com.moa.moa_be.domain.user.entity.User;
 import com.moa.moa_be.domain.user.repository.UserRepository;
 import com.moa.moa_be.global.exception.CustomException;
@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScreenshotClassificationService {
     private final ScreenshotClassificationRepository repository;
     private final UserRepository userRepository;
-    private final ScreenshotAnalysisRepository analysisRepository;
+    private final AnalysisJobService analysisJobService;
 
     @Transactional
     public List<ClassificationResponse> save(Long userId, ClassificationBatchRequest request) {
@@ -64,7 +64,7 @@ public class ScreenshotClassificationService {
             throw new CustomException(GlobalErrorCode.INVALID_STATE_TRANSITION);
         }
         if (entity.getClassification() == Classification.PRACTICE && classification == Classification.REFERENCE) {
-            analysisRepository.deleteByCaptureId(id);
+            analysisJobService.deleteByCaptureId(id);
         }
         entity.changeClassification(classification);
         return ClassificationResponse.from(entity);
@@ -74,7 +74,7 @@ public class ScreenshotClassificationService {
     public void cancel(Long userId, Long id) {
         ScreenshotClassification entity = repository.findOwnedForUpdate(id, userId)
                 .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
-        analysisRepository.deleteByCaptureId(id);
+        analysisJobService.deleteByCaptureId(id);
         repository.delete(entity);
     }
 }

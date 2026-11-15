@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.moa.moa_be.domain.screenshot.dto.ClassificationBatchRequest;
-import com.moa.moa_be.domain.analysis.repository.ScreenshotAnalysisRepository;
+import com.moa.moa_be.domain.analysis.service.AnalysisJobService;
 import com.moa.moa_be.domain.screenshot.entity.Classification;
 import com.moa.moa_be.domain.screenshot.entity.ScreenshotClassification;
 import com.moa.moa_be.domain.screenshot.repository.ScreenshotClassificationRepository;
@@ -22,14 +22,14 @@ import org.junit.jupiter.api.Test;
 class ScreenshotClassificationServiceTest {
     private ScreenshotClassificationRepository repository;
     private UserRepository users;
-    private ScreenshotAnalysisRepository analyses;
+    private AnalysisJobService analyses;
     private ScreenshotClassificationService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ScreenshotClassificationRepository.class);
         users = mock(UserRepository.class);
-        analyses = mock(ScreenshotAnalysisRepository.class);
+        analyses = mock(AnalysisJobService.class);
         service = new ScreenshotClassificationService(repository, users, analyses);
     }
 
