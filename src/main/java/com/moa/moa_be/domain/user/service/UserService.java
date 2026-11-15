@@ -1,5 +1,6 @@
 package com.moa.moa_be.domain.user.service;
 
+import com.moa.moa_be.domain.analysis.repository.ScreenshotAnalysisRepository;
 import com.moa.moa_be.domain.category.service.CategoryService;
 import com.moa.moa_be.global.exception.CustomException;
 import com.moa.moa_be.global.exception.GlobalErrorCode;
@@ -20,6 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CategoryService categoryService;
+    private final ScreenshotAnalysisRepository screenshotAnalysisRepository;
 
     @Transactional
     public UserResponse signup(SignUpRequest request) {
@@ -52,6 +54,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(GlobalErrorCode.USER_NOT_FOUND));
 
+        screenshotAnalysisRepository.deleteAllByUserId(userId);
         categoryService.deleteAllByUserId(userId);
         userRepository.delete(user);
     }
