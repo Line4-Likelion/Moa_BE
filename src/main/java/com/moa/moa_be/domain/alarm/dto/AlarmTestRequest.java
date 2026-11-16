@@ -1,11 +1,13 @@
 package com.moa.moa_be.domain.alarm.dto;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
-@NoArgsConstructor
+@Setter
 public class AlarmTestRequest {
     private String type;
     private String captureId;
+    private String title;
+    private String body;
 }

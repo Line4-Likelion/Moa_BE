@@ -83,6 +83,20 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
     @Column(name = "has_guide")
     private Boolean hasGuide;
 
+    // ---- 장소 정보 (지오펜싱용) ----
+
+    @Column(name = "place_name", length = 100)
+    private String placeName;
+
+    @Column(name = "place_address", length = 500)
+    private String placeAddress;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     /** AnalysisResult 전체 (추출 정보, 가이드, 체크리스트, 좌표 등) */
     @Column(name = "result_json", columnDefinition = "json")
     private String resultJson;
@@ -120,6 +134,10 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
         this.requestedAt = LocalDateTime.now();
         this.startedAt = null;
         this.finishedAt = null;
+        this.placeName = null;
+        this.placeAddress = null;
+        this.latitude = null;
+        this.longitude = null;
     }
 
     /** 다시 분석해도 되는 상태인지: 실패했거나, 성공했지만 실천 방법(가이드)을 못 만든 경우 */
@@ -136,8 +154,19 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
         }
     }
 
-    public void succeed(DeadlineStatus deadlineStatus, LocalDate deadlineDate, Long categoryId,
-                        String title, boolean hasGuide, String resultJson) {
+
+    public void succeed(
+            DeadlineStatus deadlineStatus,
+            LocalDate deadlineDate,
+            Long categoryId,
+            String title,
+            boolean hasGuide,
+            String resultJson,
+            String placeName,
+            String placeAddress,
+            Double latitude,
+            Double longitude
+    ) {
         this.status = AnalysisStatus.SUCCEEDED;
         this.step = AnalysisStep.DONE;
         this.deadlineStatus = deadlineStatus;
@@ -147,8 +176,12 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
         this.title = title;
         this.hasGuide = hasGuide;
         this.resultJson = resultJson;
+
+        updatePlace(placeName, placeAddress, latitude, longitude);
+
         this.finishedAt = LocalDateTime.now();
     }
+
 
     public void fail(String errorCode, String errorMessage) {
         this.status = AnalysisStatus.FAILED;
@@ -161,5 +194,17 @@ public class ScreenshotAnalysis extends BaseTimeEntity {
     public void changeCategory(Long categoryId) {
         this.categoryId = categoryId;
         this.categorySource = CategorySource.USER;
+    }
+
+    public void updatePlace(
+            String placeName,
+            String placeAddress,
+            Double latitude,
+            Double longitude
+    ) {
+        this.placeName = placeName;
+        this.placeAddress = placeAddress;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 }

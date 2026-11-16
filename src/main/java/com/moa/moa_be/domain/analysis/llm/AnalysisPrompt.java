@@ -32,6 +32,11 @@ final class AnalysisPrompt {
                  (맛집의 영업시간, 행사의 장소 등)는 최대 2개까지 value=null 로 넣어도 된다.
                - 가격(price)은 원·₩·$ 같은 화폐 표시가 있거나 가격임이 분명한 숫자만 넣는다.
                - facts 는 최대 6개.
+               - place 에는 사진에서 확인할 수 있는 실제 방문 장소 정보를 넣는다.
+               - name 은 매장명, 시설명, 행사장명 등 장소의 이름이다.
+               - address 는 사진에 명시된 주소 또는 위치 정보만 넣는다.
+               - 동네명, 상권명, 역 이름 등 구체적인 주소가 아닌 정보는 임의로 상세 주소로 바꾸지 않는다.
+               - 장소 정보가 없으면 name 과 address 를 모두 null 로 둔다.
             7. 모든 값에는 근거가 된 블록 ID 를 source_block_ids 에 넣는다. 근거가 없으면 빈 배열.
             8. guide 는 사용자가 이 스크린샷을 '실천'하기 위한 짧은 가이드다.
                lines 는 1~3문장, preparations 는 준비물, links 는 blocks 에 실제로 적힌 URL 만.
@@ -63,6 +68,10 @@ final class AnalysisPrompt {
                 "preparations", stringArray(),
                 "links", stringArray()
         );
+        Map<String, Object> place = object(
+                "name", nullableString(),
+                "address", nullableString()
+        );
         Map<String, Object> root = object(
                 "deadline", deadline,
                 "category", Map.of("type", "string", "enum", categories),
@@ -71,7 +80,8 @@ final class AnalysisPrompt {
                 "summary", nullableString(),
                 "facts", Map.of("type", "array", "items", fact),
                 "guide", guide,
-                "checklist", stringArray()
+                "checklist", stringArray(),
+                "place", place
         );
 
         return Map.of(

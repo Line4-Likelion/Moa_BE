@@ -1,5 +1,8 @@
 package com.moa.moa_be.domain.analysis.service;
 
+import com.moa.moa_be.domain.alarm.dto.CoordinateDto;
+import com.moa.moa_be.domain.alarm.service.AlarmService;
+import com.moa.moa_be.domain.alarm.service.GeocodingService;
 import com.moa.moa_be.domain.analysis.config.AnalysisProperties;
 import com.moa.moa_be.domain.analysis.dto.AnalysisJobResponse;
 import com.moa.moa_be.domain.analysis.dto.AnalysisJobStatusResponse;
@@ -52,6 +55,8 @@ public class AnalysisJobService {
     private final ScreenshotClassificationRepository screenshotRepository;
     private final CaptureQueryRepository captureQueryRepository;
     private final CaptureAssembler captureAssembler;
+    private final AlarmService alarmService;
+    private final GeocodingService geocodingService;
 
     public AnalysisJobService(AnalysisService analysisService,
                               AnalysisJobStore jobStore,
@@ -63,7 +68,8 @@ public class AnalysisJobService {
                               ObjectProvider<JsonMapper> jsonMapper,
                               ScreenshotClassificationRepository screenshotRepository,
                               CaptureQueryRepository captureQueryRepository,
-                              CaptureAssembler captureAssembler) {
+                              CaptureAssembler captureAssembler,
+                              AlarmService alarmService, GeocodingService geocodingService) {
         this.analysisService = analysisService;
         this.jobStore = jobStore;
         this.pushSender = pushSender;
@@ -75,6 +81,8 @@ public class AnalysisJobService {
         this.screenshotRepository = screenshotRepository;
         this.captureQueryRepository = captureQueryRepository;
         this.captureAssembler = captureAssembler;
+        this.alarmService = alarmService;
+        this.geocodingService = geocodingService;
     }
 
     /** POST /captures/{id}/analysis */
@@ -115,15 +123,63 @@ public class AnalysisJobService {
             AnalysisService.AnalysisRun run = analysisService.analyze(userId, image,
                     step -> jobStore.markStep(jobId, step));
             AnalysisResult result = run.result();
+
+            String placeName = null;
+            String placeAddress = null;
+            Double latitude = null;
+            Double longitude = null;
+
+            if (result.place() != null
+                    && result.place().address() != null
+                    && !result.place().address().isBlank()) {
+
+                placeName = result.place().name();
+                placeAddress = result.place().address();
+
+                log.info("장소 정보 추출 완료 name={}, address={}",
+                        placeName, placeAddress);
+
+                CoordinateDto coordinate =
+                        geocodingService.getCoordinates(placeName, placeAddress);
+
+                if (coordinate != null) {
+                    latitude = coordinate.getLat();
+                    longitude = coordinate.getLng();
+
+                    log.info("좌표 변환 성공 lat={}, lng={}",
+                            latitude, longitude);
+                } else {
+                    log.warn("좌표 변환 실패 name={}, address={}",
+                            placeName, placeAddress);
+                }
+            }
             Long categoryId = categoryRepository.findByUserIdAndName(userId, result.category())
                     .map(Category::getId)
                     .orElse(null);
-            boolean saved = jobStore.succeed(jobId, result, categoryId, jsonMapper.writeValueAsString(result));
+            boolean saved = jobStore.succeed(
+                    jobId,
+                    result,
+                    categoryId,
+                    jsonMapper.writeValueAsString(result),
+                    placeName,
+                    placeAddress,
+                    latitude,
+                    longitude
+            );
             if (!saved) {
                 return; // 이미 타임아웃으로 실패 처리됨 → 푸시도 이미 보냄
             }
             finalStatus = AnalysisStatus.SUCCEEDED;
-            // TODO(D 파트): 분석 완료 시 알림 예약 생성 (마감기한 기반 리마인드)
+
+            // 분석 완료 시 마감 알림 예약
+            alarmService.scheduleDeadlineAlarm(
+                    userId,
+                    captureId,
+                    result.title(),
+                    result.deadline().status(),
+                    result.deadline().date()
+            );
+
         } catch (CustomException e) {
             if (!jobStore.fail(jobId, e.getErrorCode().getCode(), e.getErrorCode().getMessage())) {
                 return;
@@ -209,7 +265,16 @@ public class AnalysisJobService {
     }
 
     private AnalysisResult withCategory(AnalysisResult r, String categoryName) {
-        return new AnalysisResult(r.deadline(), categoryName, r.categoryConfidence(), r.title(), r.summary(),
-                r.facts(), r.guide(), r.checklist());
+        return new AnalysisResult(
+                r.deadline(),
+                categoryName,
+                r.categoryConfidence(),
+                r.title(),
+                r.summary(),
+                r.facts(),
+                r.guide(),
+                r.checklist(),
+                r.place()
+        );
     }
 }
