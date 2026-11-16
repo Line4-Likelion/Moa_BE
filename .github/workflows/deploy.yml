@@ -52,5 +52,10 @@ jobs:
 
             cd ~/app
             JAR_NAME=$(ls -t *.jar | head -n 1)
+
+            # AI 분석용 API 키 (GitHub Secrets 에서 주입, 로그에는 *** 로 가려짐)
+            export GOOGLE_VISION_API_KEY='${{ secrets.GOOGLE_VISION_API_KEY }}'
+            export OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'
+
             nohup java -jar $JAR_NAME > app.log 2>&1 &
             echo "Deployed $JAR_NAME successfully!"
