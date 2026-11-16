@@ -45,7 +45,9 @@ public class AnalysisService {
     private final CategoryService categoryService;
 
     /** 분석 1회 결과 (개발용 API 에서 OCR 원문도 같이 보여주려고 묶음) */
-    public record AnalysisRun(OcrResult ocr, AnalysisResult result, boolean imageSent, long elapsedMs) {
+    public record AnalysisRun(OcrResult ocr, AnalysisResult result,
+                              @com.fasterxml.jackson.annotation.JsonProperty("image_sent") boolean imageSent,
+                              @com.fasterxml.jackson.annotation.JsonProperty("elapsed_ms") long elapsedMs) {
     }
 
     public AnalysisRun analyze(Long userId, MultipartFile image) {

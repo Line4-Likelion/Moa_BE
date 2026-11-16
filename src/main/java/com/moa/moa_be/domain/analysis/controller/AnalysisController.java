@@ -5,6 +5,7 @@ import com.moa.moa_be.domain.analysis.dto.AnalysisJobStatusResponse;
 import com.moa.moa_be.domain.analysis.dto.CaptureAnalysisResponse;
 import com.moa.moa_be.domain.analysis.dto.CategoryChangeRequest;
 import com.moa.moa_be.domain.analysis.service.AnalysisJobService;
+import com.moa.moa_be.domain.capture.dto.CaptureSummaryResponse;
 import com.moa.moa_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,9 +62,10 @@ public class AnalysisController {
         return ResponseEntity.ok(BaseResponse.success(analysisJobService.getResult(userId, captureId)));
     }
 
-    @Operation(summary = "카테고리 수동 변경 (B-4)", description = "AI가 정한 카테고리를 직접 변경. categorySource 가 USER 로 바뀝니다.")
+    @Operation(summary = "카테고리 수동 변경 (B-4)",
+            description = "실천 사진은 분석 결과의 카테고리를 바꾸고(category_source=USER), 참고 사진은 참고함 카테고리를 바꿉니다. 응답은 캡처 요약형.")
     @PatchMapping("/captures/{id}/category")
-    public ResponseEntity<BaseResponse<CaptureAnalysisResponse>> changeCategory(
+    public ResponseEntity<BaseResponse<CaptureSummaryResponse>> changeCategory(
             @AuthenticationPrincipal Long userId,
             @PathVariable("id") Long captureId,
             @Valid @RequestBody CategoryChangeRequest request) {
