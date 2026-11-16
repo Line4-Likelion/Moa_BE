@@ -40,4 +40,9 @@ public interface ScreenshotAnalysisRepository extends JpaRepository<ScreenshotAn
             Long userId,
             AnalysisStatus status
     );
+
+    Optional<ScreenshotAnalysis> findByCaptureIdAndUserId(
+            Long captureId,
+            Long userId
+    );
 }

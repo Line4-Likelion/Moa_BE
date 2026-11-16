@@ -129,4 +129,59 @@ public class FcmService {
 
         return sent;
     }
+
+    public boolean sendLocationArrival(
+            Long userId,
+            Long captureId,
+            String placeName
+    ) {
+        if (isDndEnabled(userId)) {
+            log.info("방해금지 설정으로 장소 도착 알림 차단 userId={}, captureId={}",
+                    userId, captureId);
+            return false;
+        }
+
+        List<PushToken> tokens = pushTokenRepository.findAllByUserId(userId);
+
+        if (tokens.isEmpty()) {
+            log.warn("장소 도착 알림 전송 실패: 등록된 토큰 없음 userId={}", userId);
+            return false;
+        }
+
+        String title = "장소 도착 알림";
+        String body = "'" + placeName + "' 근처에 도착했어요.";
+        String captureIdValue = String.valueOf(captureId);
+        String deeplink = "moa://captures/" + captureId;
+
+        boolean sent = false;
+
+        for (PushToken pushToken : tokens) {
+            Message message = Message.builder()
+                    .setToken(pushToken.getToken())
+                    .setNotification(Notification.builder()
+                            .setTitle(title)
+                            .setBody(body)
+                            .build())
+                    .putData("type", "LOCATION_ARRIVAL")
+                    .putData("capture_id", captureIdValue)
+                    .putData("title", title)
+                    .putData("body", body)
+                    .putData("deeplink", deeplink)
+                    .build();
+
+            try {
+                FirebaseMessaging.getInstance().send(message);
+                sent = true;
+
+                log.info("장소 도착 알림 전송 성공 userId={}, captureId={}",
+                        userId, captureId);
+
+            } catch (FirebaseMessagingException e) {
+                log.error("장소 도착 알림 전송 실패 userId={}, captureId={}: {}",
+                        userId, captureId, e.getMessage());
+            }
+        }
+
+        return sent;
+    }
 }
