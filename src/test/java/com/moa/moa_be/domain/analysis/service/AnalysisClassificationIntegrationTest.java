@@ -8,6 +8,8 @@ import com.moa.moa_be.domain.alarm.service.AlarmService;
 import com.moa.moa_be.domain.alarm.service.GeocodingService;
 import com.moa.moa_be.domain.analysis.config.AnalysisProperties;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
+import com.moa.moa_be.domain.capture.repository.CaptureQueryRepository;
+import com.moa.moa_be.domain.capture.service.CaptureAssembler;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
 import com.moa.moa_be.domain.category.service.CategoryService;
 import com.moa.moa_be.domain.screenshot.entity.Classification;
@@ -46,6 +48,7 @@ class AnalysisClassificationIntegrationTest {
                 analysis, jobs, mock(AnalysisPushSender.class),
                 mock(CategoryService.class), mock(CategoryRepository.class),
                 new AnalysisProperties(null, null, 50), executor, mapper, captures,
+                mock(CaptureQueryRepository.class), mock(CaptureAssembler.class),
                 alarmService, mock(GeocodingService.class)
         );
     }

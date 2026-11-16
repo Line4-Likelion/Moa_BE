@@ -17,12 +17,11 @@ public class CategoryResponse {
     @Schema(description = "카테고리 이름", example = "맛집")
     private String name;
 
-    @JsonProperty("isCustom")
+    @JsonProperty("is_custom")
     @Schema(description = "사용자가 직접 만든 카테고리인지", example = "false")
     private boolean custom;
 
-    // TODO: Screenshot/Task 엔티티가 dev에 머지되면 실천 대기(TODO) 개수 집계로 교체
-    @JsonProperty("todoCount")
+    @JsonProperty("todo_count")
     @Schema(description = "이 카테고리의 실천 대기 항목 수", example = "1")
     private long todoCount;
 

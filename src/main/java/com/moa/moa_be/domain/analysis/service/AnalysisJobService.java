@@ -10,6 +10,9 @@ import com.moa.moa_be.domain.analysis.dto.AnalysisResult;
 import com.moa.moa_be.domain.analysis.dto.CaptureAnalysisResponse;
 import com.moa.moa_be.domain.analysis.entity.AnalysisStatus;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
+import com.moa.moa_be.domain.capture.dto.CaptureSummaryResponse;
+import com.moa.moa_be.domain.capture.repository.CaptureQueryRepository;
+import com.moa.moa_be.domain.capture.service.CaptureAssembler;
 import com.moa.moa_be.domain.category.entity.Category;
 import com.moa.moa_be.domain.category.repository.CategoryRepository;
 import com.moa.moa_be.domain.category.service.CategoryService;
@@ -50,6 +53,8 @@ public class AnalysisJobService {
     private final ThreadPoolTaskExecutor analysisExecutor;
     private final JsonMapper jsonMapper;
     private final ScreenshotClassificationRepository screenshotRepository;
+    private final CaptureQueryRepository captureQueryRepository;
+    private final CaptureAssembler captureAssembler;
     private final AlarmService alarmService;
     private final GeocodingService geocodingService;
 
@@ -62,6 +67,8 @@ public class AnalysisJobService {
                               @Qualifier("analysisExecutor") ThreadPoolTaskExecutor analysisExecutor,
                               ObjectProvider<JsonMapper> jsonMapper,
                               ScreenshotClassificationRepository screenshotRepository,
+                              CaptureQueryRepository captureQueryRepository,
+                              CaptureAssembler captureAssembler,
                               AlarmService alarmService, GeocodingService geocodingService) {
         this.analysisService = analysisService;
         this.jobStore = jobStore;
@@ -72,6 +79,8 @@ public class AnalysisJobService {
         this.analysisExecutor = analysisExecutor;
         this.jsonMapper = jsonMapper.getIfAvailable(() -> JsonMapper.builder().build());
         this.screenshotRepository = screenshotRepository;
+        this.captureQueryRepository = captureQueryRepository;
+        this.captureAssembler = captureAssembler;
         this.alarmService = alarmService;
         this.geocodingService = geocodingService;
     }
@@ -200,11 +209,28 @@ public class AnalysisJobService {
         return toResponse(userId, jobStore.getMine(userId, captureId));
     }
 
-    /** PATCH /captures/{id}/category (B-4) */
-    public CaptureAnalysisResponse changeCategory(Long userId, Long captureId, Long categoryId) {
+    /**
+     * PATCH /captures/{id}/category (B-4) — 응답은 명세서대로 캡처 요약형.
+     * <ul>
+     *   <li>실천 사진: 분석 결과의 카테고리를 바꾸고 출처를 USER 로 (분석이 끝난 사진만, 아니면 409)</li>
+     *   <li>참고 사진(안함으로 온 사진 포함): 캡처의 참고함 카테고리를 바꿈</li>
+     * </ul>
+     */
+    @Transactional
+    public CaptureSummaryResponse changeCategory(Long userId, Long captureId, Long categoryId) {
         categoryService.getMyCategory(userId, categoryId); // 내 카테고리가 아니면 404
-        ScreenshotAnalysis analysis = jobStore.changeCategory(userId, captureId, categoryId);
-        return toResponse(userId, analysis);
+        var capture = screenshotRepository.findOwnedForUpdate(captureId, userId)
+                .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
+
+        switch (capture.getClassification()) {
+            case PRACTICE -> jobStore.changeCategory(userId, captureId, categoryId);
+            case REFERENCE -> capture.changeReferenceCategory(categoryId);
+            default -> throw new CustomException(GlobalErrorCode.NOT_FOUND); // 삭제 처리된 사진
+        }
+
+        return captureQueryRepository.findOne(userId, captureId)
+                .map(row -> captureAssembler.toSummary(userId, row))
+                .orElseThrow(() -> new CustomException(GlobalErrorCode.NOT_FOUND));
     }
 
     /**

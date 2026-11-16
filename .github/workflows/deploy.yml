@@ -21,6 +21,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Firebase 키는 .gitignore 라 저장소에 없음 → 빌드 전에 Secret 으로 파일을 만들어 jar 에 포함
+      - name: Create Firebase service account key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          mkdir -p src/main/resources/firebase
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > src/main/resources/firebase/firebase-service-account.json
+
       - name: Build with Gradle
         run: ./gradlew bootJar -x test
 
@@ -56,6 +64,8 @@ jobs:
             # AI 분석용 API 키 (GitHub Secrets 에서 주입, 로그에는 *** 로 가려짐)
             export GOOGLE_VISION_API_KEY='${{ secrets.GOOGLE_VISION_API_KEY }}'
             export OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'
+            # 장소 좌표 변환(카카오 로컬 API)
+            export KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}'
 
             nohup java -jar $JAR_NAME > app.log 2>&1 &
             echo "Deployed $JAR_NAME successfully!"

@@ -63,7 +63,8 @@ class CaptureActionServiceTest {
         capture = new ScreenshotClassification(user, "media:1", Classification.PRACTICE);
         ReflectionTestUtils.setField(capture, "id", CAPTURE_ID);
         analysis = ScreenshotAnalysis.request(USER_ID, CAPTURE_ID);
-        analysis.succeed(DeadlineStatus.FOUND, DEADLINE, 3L, "연남 소바실", true, "{}");
+        analysis.succeed(DeadlineStatus.FOUND, DEADLINE, 3L, "연남 소바실", true, "{}",
+                null, null, null, null); // 장소 정보 없음
 
         when(classifications.findOwnedForUpdate(CAPTURE_ID, USER_ID)).thenReturn(Optional.of(capture));
         when(queries.findOne(USER_ID, CAPTURE_ID)).thenAnswer(i -> Optional.of(new CaptureRow(capture, analysis)));

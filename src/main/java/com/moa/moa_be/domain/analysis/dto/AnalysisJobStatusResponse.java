@@ -1,5 +1,6 @@
 package com.moa.moa_be.domain.analysis.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.moa.moa_be.domain.analysis.entity.AnalysisStatus;
 import com.moa.moa_be.domain.analysis.entity.AnalysisStep;
 import com.moa.moa_be.domain.analysis.entity.ScreenshotAnalysis;
@@ -10,8 +11,8 @@ import java.util.List;
 public record AnalysisJobStatusResponse(List<Job> jobs) {
 
     public record Job(
-            Long jobId,
-            Long captureId,
+            @JsonProperty("job_id") Long jobId,
+            @JsonProperty("capture_id") Long captureId,
             @Schema(example = "RUNNING") AnalysisStatus status,
             @Schema(example = "OCR") AnalysisStep step,
             @Schema(description = "FAILED 일 때만 값이 있음") Error error
