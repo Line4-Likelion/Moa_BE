@@ -21,6 +21,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FcmService {
 
+    public enum DeadlineSendResult {
+        SENT,
+        NO_TOKEN,
+        FAILED,
+        BLOCKED
+    }
+
     private final PushTokenRepository pushTokenRepository;
     private final AlarmSettingsRepository alarmSettingsRepository;
 
@@ -74,7 +81,8 @@ public class FcmService {
         }
     }
 
-    public boolean sendDeadlineReminder(
+
+    public DeadlineSendResult sendDeadlineReminder(
             Long userId,
             Long captureId,
             String title,
@@ -84,14 +92,14 @@ public class FcmService {
         if (isDndEnabled(userId)) {
             log.info("방해금지 설정으로 마감 알림 전송 차단 userId={}, captureId={}",
                     userId, captureId);
-            return false;
+            return DeadlineSendResult.BLOCKED;
         }
 
         List<PushToken> tokens = pushTokenRepository.findAllByUserId(userId);
 
         if (tokens.isEmpty()) {
             log.warn("마감 알림 전송 실패: 등록된 토큰 없음 userId={}", userId);
-            return false;
+            return DeadlineSendResult.NO_TOKEN;
         }
 
         String notificationTitle = "마감일 알림";
@@ -119,16 +127,21 @@ public class FcmService {
             try {
                 FirebaseMessaging.getInstance().send(message);
                 sent = true;
+
                 log.info("마감 리마인드 전송 성공 userId={}, captureId={}",
                         userId, captureId);
+
             } catch (FirebaseMessagingException e) {
                 log.error("마감 리마인드 전송 실패 userId={}, captureId={}: {}",
                         userId, captureId, e.getMessage());
             }
         }
 
-        return sent;
+        return sent
+                ? DeadlineSendResult.SENT
+                : DeadlineSendResult.FAILED;
     }
+
 
     public boolean sendLocationArrival(
             Long userId,
