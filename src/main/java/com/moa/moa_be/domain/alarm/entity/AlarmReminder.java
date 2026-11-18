@@ -49,6 +49,9 @@ public class AlarmReminder {
     @Column(nullable = false, length = 20)
     private ReminderStatus status;
 
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount = 0;
+
     public static AlarmReminder create() {
         return new AlarmReminder();
     }
@@ -72,8 +75,16 @@ public class AlarmReminder {
         this.status = ReminderStatus.SENT;
     }
 
+    public void markFailed() {
+        this.status = ReminderStatus.FAILED;
+    }
+
     public void cancel() {
         this.status = ReminderStatus.CANCELLED;
+    }
+
+    public void increaseRetryCount() {
+        this.retryCount++;
     }
 
     public enum ReminderStatus {

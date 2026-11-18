@@ -1,5 +1,6 @@
 package com.moa.moa_be.domain.alarm.service;
 
+import com.moa.moa_be.domain.alarm.service.FcmService.DeadlineSendResult;
 import com.moa.moa_be.domain.alarm.entity.AlarmReminder;
 import com.moa.moa_be.domain.alarm.entity.AlarmReminder.ReminderStatus;
 import com.moa.moa_be.domain.alarm.entity.AlarmSettings;
@@ -24,6 +25,7 @@ public class AlarmService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
+    private static final int MAX_RETRY_COUNT = 3;
     private final FcmService fcmService;
     private final AlarmReminderRepository alarmReminderRepository;
     private final AlarmSettingsRepository alarmSettingsRepository;
@@ -98,20 +100,62 @@ public class AlarmService {
                     continue;
                 }
 
-                boolean sent = fcmService.sendDeadlineReminder(
+                DeadlineSendResult result = fcmService.sendDeadlineReminder(
                         reminder.getUserId(),
                         reminder.getCaptureId(),
                         reminder.getTitle(),
                         reminder.getDeadlineDate()
                 );
 
-                if (sent) {
-                    reminder.markSent();
+                switch (result) {
+                    case SENT:
+                        reminder.markSent();
+                        break;
+
+                    case NO_TOKEN:
+                        reminder.markFailed();
+                        log.warn("푸시 토큰이 없어 마감 알림 실패 처리 userId={}, captureId={}",
+                                reminder.getUserId(), reminder.getCaptureId());
+                        break;
+
+                    case FAILED:
+                        reminder.increaseRetryCount();
+
+                        if (reminder.getRetryCount() >= MAX_RETRY_COUNT) {
+                            reminder.markFailed();
+
+                            log.error("마감 알림 최대 재시도 횟수 초과 userId={}, captureId={}, retryCount={}",
+                                    reminder.getUserId(),
+                                    reminder.getCaptureId(),
+                                    reminder.getRetryCount());
+                        } else {
+                            log.warn("마감 알림 전송 실패, 재시도 예정 userId={}, captureId={}, retryCount={}",
+                                    reminder.getUserId(),
+                                    reminder.getCaptureId(),
+                                    reminder.getRetryCount());
+                        }
+                        break;
+
+                    case BLOCKED:
+                        reminder.cancel();
+                        log.info("마감 알림 전송 차단 userId={}, captureId={}",
+                                reminder.getUserId(), reminder.getCaptureId());
+                        break;
                 }
 
             } catch (Exception e) {
-                log.error("마감 알림 처리 실패 captureId={}: {}",
-                        reminder.getCaptureId(), e.getMessage(), e);
+                reminder.increaseRetryCount();
+
+                if (reminder.getRetryCount() >= MAX_RETRY_COUNT) {
+                    reminder.markFailed();
+                    log.error("마감 알림 처리 최대 재시도 횟수 초과 captureId={}, retryCount={}",
+                            reminder.getCaptureId(),
+                            reminder.getRetryCount(), e);
+                } else {
+                    log.error("마감 알림 처리 중 예외 발생, 재시도 예정 captureId={}, retryCount={}",
+                            reminder.getCaptureId(),
+                            reminder.getRetryCount(), e);
+                }
             }
         }
     }
